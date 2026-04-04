@@ -1,0 +1,141 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidatePath } from 'next/cache'
+import type { ActionResult } from '@/types/actions'
+
+export async function getCurrentSubscription() {
+  const supabase = await createClient()
+
+  const { data: memberData, error: memberError } = await supabase.rpc('current_office_id').single()
+  if (memberError || !memberData) return { data: null, error: 'غير مصرح' }
+
+  const { data, error } = await supabase
+    .from('office_subscriptions')
+    .select(`
+      *,
+      subscription_plans (*)
+    `)
+    .eq('office_id', memberData)
+    .single()
+
+  if (error && error.code !== 'PGRST116') {
+    // PGRST116 is "Rows not found" filter, meaning no active sub record
+    console.error('Error fetching subscription:', error)
+    return { data: null, error: 'فشل جلب بيانات الاشتراك' }
+  }
+
+  return { data, error: null }
+}
+
+export async function getAvailablePlans() {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('subscription_plans')
+    .select('*')
+    // @ts-expect-error - is_active is dynamically added to DB schema
+    .eq('is_active', true)
+    .order('price_ils', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching plans:', error)
+    return { data: null, error: 'فشل جلب باقات الاشتراك' }
+  }
+
+  return { data, error: null }
+}
+
+export async function getPaymentHistory() {
+  const supabase = await createClient()
+
+  const { data: memberData } = await supabase.rpc('current_office_id').single()
+  if (!memberData) return { data: null, error: 'غير مصرح' }
+
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('office_id', memberData)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching payments:', error)
+    return { data: null, error: 'فشل جلب تاريخ الدفعات' }
+  }
+
+  return { data, error: null }
+}
+
+export async function getPendingUpgradeRequest() {
+  const supabase = await createClient()
+
+  const { data: memberData } = await supabase.rpc('current_office_id').single()
+  if (!memberData) return { data: null, error: null }
+
+  const { data, error } = await supabase
+    .from('subscription_requests')
+    .select('*')
+    .eq('office_id', memberData)
+    .eq('status', 'pending')
+    .single()
+
+  if (error || !data) {
+    return { data: null, error: null }
+  }
+
+  return { data, error: null }
+}
+
+export async function requestPlanUpgradeAction(planId: string): Promise<ActionResult> {
+  const supabase = await createClient()
+
+  const { data: memberData, error: memberError } = await supabase.rpc('current_office_id').single()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (memberError || !memberData || !user) return { data: null, error: 'غير مصرح' }
+
+  // Enterprise plan guard
+  const supabaseAdmin = createAdminClient()
+  const { data: planToRequest } = await supabaseAdmin
+    .from('subscription_plans')
+    .select('slug')
+    .eq('id', planId)
+    .single()
+
+  if (planToRequest?.slug === 'enterprise') {
+    return { data: null, error: 'ENTERPRISE_NOT_REQUESTABLE' }
+  }
+
+  // Check existing pending/awaiting_payment requests
+  const { data: existingReq } = await supabaseAdmin
+    .from('subscription_requests')
+    .select('id, status')
+    .eq('office_id', memberData)
+    .in('status', ['pending', 'awaiting_payment'])
+    .maybeSingle()
+    
+  if (existingReq) {
+    const msg = existingReq.status === 'pending' 
+      ? 'يوجد طلب ترقية قيد المراجعة بالفعل لعيادتك أو مكتبك.' 
+      : 'يوجد طلب معتمد وبانتظار الدفع حالياً. يرجى إتمام الدفع أو التواصل مع الإدارة.'
+    return { data: null, error: msg }
+  }
+
+  // Must be owner or admin realistically, handled via RLS policies
+  const { error } = await supabaseAdmin
+    .from('subscription_requests')
+    .insert({
+      office_id: memberData,
+      requested_plan_id: planId,
+      status: 'pending',
+      requested_by: user.id
+    })
+
+  if (error) {
+    console.error('Error requesting upgrade:', error)
+    return { data: null, error: 'فشل تقديم طلب الترقية، تأكد من أنك تملك صلاحية مدير المكتب.' }
+  }
+
+  revalidatePath('/dashboard/subscription')
+  return { data: null, error: null }
+}

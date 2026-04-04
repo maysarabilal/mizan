@@ -1,0 +1,53 @@
+---
+description: Database safety rules — protecting multi-tenant data and RLS integrity
+---
+
+# Database Safety
+
+## Multi-Tenancy Isolation (Non-Negotiable)
+
+1. **Every data table has `office_id`.** When inserting records, always set `office_id` from:
+   ```typescript
+   const { data: officeId } = await supabase.rpc('current_office_id').single()
+   ```
+2. **Never hardcode or skip `office_id`.** If `current_office_id()` returns null, abort the operation — the user has no active office membership.
+3. **Every query must respect tenant isolation.** For `createClient()` (RLS-aware), isolation is automatic. For `createAdminClient()` (RLS-bypassed), you MUST add explicit `.eq('office_id', ...)` filtering. Unfiltered admin queries returning user data across tenants is a security breach.
+4. **RLS is the security boundary.** Do not add application-level tenant filtering as a substitute for RLS. It's defense-in-depth, not a replacement.
+
+## Supabase Client Safety
+
+4. **Default to `createClient()` (RLS-aware).** Only use `createAdminClient()` when you must bypass RLS. Document the reason.
+5. **`createAdminClient()` is allowed ONLY in these cases:**
+   - Onboarding (office + member + subscription creation)
+   - Cross-tenant admin queries (`/admin` panel actions)
+   - Invitation redemption (user not yet in target office)
+   - Subscription capacity checks (cross-tenant query)
+   - Permission updates (RLS may block `office_members` write)
+6. **Never import `admin.ts` in client components.** It exposes `SUPABASE_SERVICE_ROLE_KEY`.
+
+## Migration Safety
+
+7. **Schema source of truth: `supabase/migrations/`.** There are 13 migration files. Always check them before assuming a column exists or has certain constraints.
+8. **Do not trust `database.ts` alone.** Before using any column, status value, or constraint in a fix, cross-check against the actual migrations. If the type file and migrations disagree, the migrations are correct.
+8. **Do not modify existing migrations.** Create new migration files for schema changes.
+9. **After schema changes, run `npx supabase gen types`** to regenerate `database.ts`. The current types are stale.
+10. **RLS policy changes affect all tenants instantly.** Test any RLS change against multiple tenant scenarios.
+
+## Known Schema Drift
+
+These discrepancies exist between `database.ts` and the actual DB:
+
+| Issue | Details |
+|---|---|
+| Roles | Init: `owner\|lawyer\|assistant` → Current: `owner\|admin\|lawyer\|secretary\|trainee` |
+| Subscription statuses | Init: 4 values → Current: 7 values in types |
+| `billing_cycle` | Referenced in code, exists in DB, missing from types |
+| `slug` on plans | Added in migration, may be missing from types |
+| `has_permission` RPC | Added in later migration, not in types (cast with `as any`) |
+
+## Query Safety
+
+12. **Always handle null/error returns** from `.rpc()` and `.single()` calls. When `current_office_id()` returns null, it means the user has no active membership.
+13. **Use `.maybeSingle()` instead of `.single()`** when a row might not exist (e.g., checking if a user already has a membership).
+14. **Cascading deletes exist** in the schema (`ON DELETE CASCADE` on most FKs). Be aware of what gets deleted when you delete an office, case, or client.
+15. **Never hardcode Arabic enum values in queries.** Task `status` and `priority` are stored as Arabic strings (`معلقة`, `متوسطة`, etc.). Use map constants (`STATUS_TO_DB`, `PRIORITY_TO_DB`) or helper functions (`toDbStatus()`, `toDbPriority()`) from `src/lib/constants/enums.ts`. Hardcoding Arabic strings in `.eq()` or `.in()` filters is forbidden — they break silently if mappings change.

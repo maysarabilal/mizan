@@ -1,0 +1,62 @@
+---
+description: Technology stack context and framework-specific rules for Mizan
+---
+
+# Tech Context
+
+## Stack Versions (Verified)
+
+- **Next.js 16.2.1** — App Router, React Compiler enabled, `ignoreBuildErrors: true`
+- **React 19.2.4** — Functional components only
+- **Tailwind CSS v4** — Uses `@theme inline`, oklch color functions, `tw-animate-css`
+- **shadcn/ui** — base-nova style, 19 components in `src/components/ui/`
+- **Supabase** — PostgreSQL 15, RLS on all 14 tables, 4 RPC helper functions
+- **Zod v4** — Input validation in all server actions
+- **react-hook-form v7** — Form state management in Dialog components
+- **@tanstack/react-query v5** — Client-side data fetching
+- **TypeScript ^5** — Strict mode NOT enforced (build errors are ignored)
+
+## Framework Rules
+
+1. **Next.js 16 has breaking changes.** Before modifying framework-level behavior (middleware, layouts, route handlers), check `node_modules/next/dist/docs/`.
+2. **React Compiler is active.** Do not use `useMemo`, `useCallback`, or `React.memo` unless you have a specific reason — the compiler handles it.
+3. **Tailwind CSS v4 syntax.** Use `@theme inline {}` for design tokens. The project uses oklch color functions, not hex/rgb.
+4. **shadcn/ui components** are in `src/components/ui/`. Add new ones via `npx shadcn@latest add <name>`. Config file: `components.json`.
+
+## Supabase Client Rules
+
+| Context | Import From | RLS |
+|---|---|---|
+| Server Component / Server Action | `@/lib/supabase/server` → `createClient()` | ✅ Enforced |
+| Client Component | `@/lib/supabase/browser` → `createClient()` | ✅ Enforced |
+| Cross-tenant / Admin ops | `@/lib/supabase/admin` → `createAdminClient()` | ❌ Bypassed |
+| Middleware | `@/lib/supabase/middleware` (direct `createServerClient`) | Session only |
+
+**NEVER import `admin.ts` in any file that has `'use client'`.**
+
+## Server Action Template
+
+Every server action file must follow this structure:
+1. `'use server'` directive
+2. Local `ActionResult<T>` type declaration
+3. Zod validation before any DB call
+4. Arabic error messages for the client
+5. `console.error()` for internal logging
+6. `revalidatePath()` after every mutation
+7. `createClient()` for RLS-aware queries; `createAdminClient()` only when strictly required
+
+## Code Style (Enforced by Convention)
+
+- 2-space indentation
+- Single quotes
+- No semicolons
+- Functional components only
+- `cn()` utility for conditional Tailwind classes
+- RTL: use `ms-*`/`me-*` instead of `ml-*`/`mr-*`
+- All user-facing strings in Arabic
+
+## Engineering Principles
+
+- **Simplest correct solution.** Do not over-engineer. If a one-line fix resolves the root cause, do not add abstractions, refactors, or "while we're at it" improvements.
+- **No guessing.** If a type, column, RLS policy, or behavior cannot be verified from source files or migrations, mark it as `Unknown` in your notes. Do not assume it exists or works a certain way.
+- **Verify schema before writing queries.** Do not rely on `database.ts` alone — cross-check `supabase/migrations/` for actual column names, constraints, and status values.

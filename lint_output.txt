@@ -1,0 +1,236 @@
+
+> temp-app@0.1.0 lint
+> eslint
+
+
+C:\Users\maysara\Desktop\mizan\src\app\(admin-panel)\admin\_components\GlobalUsersList.tsx
+  8:10  warning  'cn' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\maysara\Desktop\mizan\src\app\(admin-panel)\admin\_components\ManualOverrideModal.tsx
+  16:74  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  22:56  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  36:11  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+
+C:\Users\maysara\Desktop\mizan\src\app\(admin-panel)\admin\_components\OfficesDirectory.tsx
+    6:106  warning  'UserPlus' is defined but never used           @typescript-eslint/no-unused-vars
+    6:142  warning  'Search' is defined but never used             @typescript-eslint/no-unused-vars
+    6:150  warning  'CheckCircle' is defined but never used        @typescript-eslint/no-unused-vars
+   14:10   warning  'Dialog' is defined but never used             @typescript-eslint/no-unused-vars
+   14:18   warning  'DialogContent' is defined but never used      @typescript-eslint/no-unused-vars
+   14:33   warning  'DialogHeader' is defined but never used       @typescript-eslint/no-unused-vars
+   14:47   warning  'DialogTitle' is defined but never used        @typescript-eslint/no-unused-vars
+   14:60   warning  'DialogDescription' is defined but never used  @typescript-eslint/no-unused-vars
+   15:10   warning  'Input' is defined but never used              @typescript-eslint/no-unused-vars
+   16:10   warning  'Select' is defined but never used             @typescript-eslint/no-unused-vars
+   16:18   warning  'SelectContent' is defined but never used      @typescript-eslint/no-unused-vars
+   16:33   warning  'SelectItem' is defined but never used         @typescript-eslint/no-unused-vars
+   16:45   warning  'SelectTrigger' is defined but never used      @typescript-eslint/no-unused-vars
+   16:60   warning  'SelectValue' is defined but never used        @typescript-eslint/no-unused-vars
+   30:58   error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+   32:54   error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  294:68   error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\(admin-panel)\admin\_components\PendingPayments.tsx
+  12:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\(admin-panel)\admin\_components\PendingRequests.tsx
+  13:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\(admin-panel)\admin\_components\SubscriptionManagement.tsx
+   38:80  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  125:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  207:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  288:61  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\(onboarding)\setup\SetupClient.tsx
+   35:13  warning  'data' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+   51:13  warning  'data' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  106:25  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\maysara\Desktop\mizan\src\app\(onboarding)\setup\SetupClient.tsx:106:25
+  104 |                       onClick={() => createForm.setValue('plan_slug', plan.slug)}
+  105 |                       className={`cursor-pointer p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-1 ${
+> 106 |                         createForm.watch('plan_slug') === plan.slug 
+      |                         ^^^^^^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  107 |                           ? 'border-primary bg-primary/5 text-primary' 
+  108 |                           : 'border-zinc-100 hover:border-zinc-200 text-zinc-600'
+  109 |                       }`}  react-hooks/incompatible-library
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\cases\CaseDialog.tsx
+  36:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\cases\CaseTable.tsx
+   23:129  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  126:65   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\cases\page.tsx
+  30:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\clients\ClientTable.tsx
+  15:79  warning  'DialogFooter' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\clients\page.tsx
+  5:26  warning  'error' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\logs\LogsTable.tsx
+  26:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  81:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\logs\page.tsx
+  12:73  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  48:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\page.tsx
+  34:29  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\page.tsx:34:29
+  32 |
+  33 |   const today = new Date().toISOString().split('T')[0]
+> 34 |   const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+     |                             ^^^^^^^^^^ Cannot call impure function
+  35 |
+  36 |   const [
+  37 |     { count: totalCases },  react-hooks/purity
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\profile\ProfileForm.tsx
+  19:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\sessions\SessionTable.tsx
+  148:66  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\sessions\page.tsx
+  31:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\settings\page.tsx
+  11:76  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:81  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\subscription\PlansGrid.tsx
+  18:10  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\subscription\SubscriptionOverview.tsx
+   2:10  warning  'ar' is defined but never used                @typescript-eslint/no-unused-vars
+  10:17  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  27:11  warning  'plan_id' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\subscription\page.tsx
+  58:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  60:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  66:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\tasks\KanbanBoard.tsx
+  93:9  warning  'columns' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\tasks\TaskDialog.tsx
+  81:10  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\team\TeamTable.tsx
+  11:37  warning  'PERMISSION_KEYS' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\maysara\Desktop\mizan\src\app\dashboard\team\page.tsx
+   25:74  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   52:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\components\layout\Sidebar.tsx
+  99:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\maysara\Desktop\mizan\src\components\layout\SubscriptionGuard.tsx
+  4:31  warning  'RefreshCcw' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\maysara\Desktop\mizan\src\components\layout\Topbar.tsx
+   4:30  warning  'LogOut' is defined but never used                 @typescript-eslint/no-unused-vars
+   4:38  warning  'User' is defined but never used                   @typescript-eslint/no-unused-vars
+   8:3   warning  'DropdownMenu' is defined but never used           @typescript-eslint/no-unused-vars
+   9:3   warning  'DropdownMenuContent' is defined but never used    @typescript-eslint/no-unused-vars
+  10:3   warning  'DropdownMenuItem' is defined but never used       @typescript-eslint/no-unused-vars
+  11:3   warning  'DropdownMenuLabel' is defined but never used      @typescript-eslint/no-unused-vars
+  12:3   warning  'DropdownMenuSeparator' is defined but never used  @typescript-eslint/no-unused-vars
+  13:3   warning  'DropdownMenuTrigger' is defined but never used    @typescript-eslint/no-unused-vars
+  15:10  warning  'Avatar' is defined but never used                 @typescript-eslint/no-unused-vars
+  15:18  warning  'AvatarFallback' is defined but never used         @typescript-eslint/no-unused-vars
+  21:9   warning  'handleLogout' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\maysara\Desktop\mizan\src\components\notifications\NotificationsList.tsx
+  14:16  warning  'CardContent' is defined but never used      @typescript-eslint/no-unused-vars
+  14:29  warning  'CardDescription' is defined but never used  @typescript-eslint/no-unused-vars
+  14:46  warning  'CardHeader' is defined but never used       @typescript-eslint/no-unused-vars
+  14:58  warning  'CardTitle' is defined but never used        @typescript-eslint/no-unused-vars
+
+C:\Users\maysara\Desktop\mizan\src\lib\actions\admin.ts
+   30:43  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+   49:18  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+   83:42  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  127:48  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  150:19  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  198:19  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  243:51  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  248:40  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  273:43  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  278:35  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  282:15  warning  'office_members' is assigned a value but never used               @typescript-eslint/no-unused-vars
+  295:19  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  316:19  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  333:19  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  372:19  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  399:19  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  428:48  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  485:19  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  509:19  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  514:7   warning  'VALID_SUBSCRIPTION_STATUSES' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  530:23  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  557:19  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  604:56  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  645:32  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+  686:36  error    Unexpected any. Specify a different type                          @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\lib\actions\onboarding.ts
+    7:10  warning  'PLAN_SLUGS' is defined but never used    @typescript-eslint/no-unused-vars
+  123:26  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  123:38  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\lib\actions\settings.ts
+  56:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\lib\actions\subscription.ts
+   64:57  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   71:43  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  113:12  warning  '_' is defined but never used             @typescript-eslint/no-unused-vars
+
+C:\Users\maysara\Desktop\mizan\src\lib\actions\subscriptions.ts
+  38:5  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+
+C:\Users\maysara\Desktop\mizan\src\lib\actions\team.ts
+    5:24  warning  'updateRoleSchema' is defined but never used   @typescript-eslint/no-unused-vars
+  111:33  warning  'subError' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  253:76  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  381:35  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  434:73  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+C:\Users\maysara\Desktop\mizan\src\lib\supabase\middleware.ts
+  18:48  warning  'options' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\maysara\Desktop\mizan\src\types\database.ts
+   37:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   70:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   97:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  163:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  193:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  226:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  259:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  292:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  340:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  385:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  430:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  466:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  499:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 131 problems (83 errors, 48 warnings)
+

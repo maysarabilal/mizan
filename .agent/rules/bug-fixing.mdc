@@ -1,0 +1,79 @@
+---
+description: Bug fixing workflow — minimal-impact, verified changes
+---
+
+# Bug Fixing Standards
+
+## Before Touching Code
+
+1. **Reproduce first.** Understand the exact failure path before editing anything.
+2. **Trace the data flow.** Most bugs originate in one of these layers:
+   - Zod validation schema (`src/lib/validations/`)
+   - Server action logic (`src/lib/actions/`)
+   - RLS policy (check `supabase/migrations/`)
+   - Supabase client mismatch (wrong client used — see tech-context rules)
+   - Stale `database.ts` types vs actual DB schema
+3. **Check schema drift.** The `src/types/database.ts` file is manually maintained and often stale. If a column or status value seems wrong, verify against `supabase/migrations/` before assuming a bug.
+
+## During the Fix
+
+4. **One fix per change.** Do not bundle unrelated improvements into a bug fix.
+5. **Minimal blast radius.** Change the fewest files possible. Prefer fixing the root cause over adding workarounds.
+6. **Preserve existing patterns.** Match the `ActionResult<T>` pattern, Zod validation, Arabic error messages, and `revalidatePath()` calls already established in the codebase.
+7. **Do not touch RLS policies** unless the bug is specifically an RLS issue. RLS changes cascade across all tenants.
+
+## Common Gotchas
+
+- **Task status/priority are Arabic strings in DB.** If a task query returns unexpected results, check if you're passing English values to a column that expects Arabic. Use `toDbStatus()` / `toDbPriority()` from `enums.ts`.
+- **`has_permission` RPC** requires `as any` cast because it's not in `database.ts` types.
+- **Admin actions need `requireAdmin()` guard.** If an admin action is returning `Forbidden`, check the user's `profiles.is_admin` flag.
+- **`subscription.ts` vs `subscriptions.ts`** — these are different files with different responsibilities.
+- **`billing_cycle`** is referenced in admin actions but isn't in TypeScript types — it exists only in the DB via migrations.
+
+## Core Principles
+
+- **Simplest correct solution.** Prefer the minimal change that fixes the root cause. Do not over-engineer. Do not refactor surrounding code during a bug fix.
+- **No superficial fixes.** Suppressing errors, adding try/catch without fixing the cause, or hiding symptoms with UI changes does not count as a fix.
+- **No guessing.** If a column, RLS policy, or status value cannot be verified from source code or migrations, mark it as "Unknown" and note what needs to be confirmed. Do not assume.
+
+## After the Fix
+
+8. **Run `npm run lint`** to catch ESLint issues.
+9. **Run `npm run build`** to verify the fix doesn't break other parts (even though TS errors are currently ignored).
+10. **Test the affected flow manually** — especially any auth, RLS, or form submission paths.
+11. **Verify revalidation.** If you changed data mutation logic, confirm that `revalidatePath()` is called for all affected routes.
+
+## Definition of Done (Strict)
+
+A bug fix is NOT complete until ALL of the following are true:
+
+- [ ] **Root cause identified** — documented in the commit or PR, not just "it works now"
+- [ ] **Fix targets the root cause** — no workarounds or symptom suppression
+- [ ] **Multi-tenant safety verified** — the fix does not leak data across offices or break RLS
+- [ ] **`npm run lint` passes** with no new errors
+- [ ] **`npm run build` completes** without new failures
+- [ ] **Affected user flow tested manually** and confirmed working
+- [ ] **No unrelated changes included** — one fix per change
+
+If any item above fails, the task is not complete.
+
+## Correction Persistence
+
+When corrected by the user or when discovering a recurring mistake, always do **both**:
+
+1. **Fix the immediate issue.**
+2. **Persist the learning** in the most specific documentation file:
+
+| Learning type | Target file |
+|---|---|
+| Architecture fact | `ARCHITECTURE.md` |
+| Product / business logic | `PRODUCT_RULES.md` |
+| Database invariant | `DB_SCHEMA.md` |
+| API behavior or action signature | `API_CONTRACT.md` |
+| Test / verification workflow | `TESTING.md` |
+| Recurring failure pattern | `TROUBLESHOOTING.md` |
+| Code cleanliness standard | `CODE_QUALITY.md` |
+| Agent behavior rule | `.agent/rules/*.mdc` |
+| Last resort (nothing else fits) | `CLAUDE.md` |
+
+**Do not bloat `CLAUDE.md`.** If the learning fits a specific file, put it there.

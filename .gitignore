@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# archive (reference prompts, backups)
+/_archive/
+mizan-builder-prompt-no-n8n.md
+mizan-surgeon-prompt-v2.md
