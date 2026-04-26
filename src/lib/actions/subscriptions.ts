@@ -4,6 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/types/actions'
+import { sendEmailSafe } from '@/lib/resend'
+import { UpgradeRequestAdminEmail } from '@/emails/UpgradeRequestAdminEmail'
+import { render } from '@react-email/components'
+import { CONFIG } from '@/lib/constants/config'
 
 export async function getCurrentSubscription() {
   const supabase = await createClient()
@@ -98,7 +102,7 @@ export async function requestPlanUpgradeAction(planId: string): Promise<ActionRe
   const supabaseAdmin = createAdminClient()
   const { data: planToRequest } = await supabaseAdmin
     .from('subscription_plans')
-    .select('slug')
+    .select('slug, name')
     .eq('id', planId)
     .single()
 
@@ -134,6 +138,30 @@ export async function requestPlanUpgradeAction(planId: string): Promise<ActionRe
   if (error) {
     console.error('Error requesting upgrade:', error)
     return { data: null, error: 'فشل تقديم طلب الترقية، تأكد من أنك تملك صلاحية مدير المكتب.' }
+  }
+
+  // Notify Admin
+  try {
+    const { data: officeData } = await supabaseAdmin
+      .from('offices')
+      .select('name')
+      .eq('id', memberData)
+      .single()
+
+    const htmlBody = await render(UpgradeRequestAdminEmail({
+      officeName: officeData?.name || 'مكتب مجهول',
+      planName: (planToRequest as any)?.name || 'باقة غير محددة',
+      requesterName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'مستخدم'
+    }))
+
+    sendEmailSafe({
+      from: CONFIG.RESEND_FROM,
+      to: [CONFIG.ADMIN_EMAIL],
+      subject: `طلب ترقية جديد من مكتب ${officeData?.name || ''}`,
+      html: htmlBody,
+    })
+  } catch (err) {
+    console.error('Failed to notify admin of upgrade request:', err)
   }
 
   revalidatePath('/dashboard/subscription')

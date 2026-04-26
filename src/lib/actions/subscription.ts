@@ -61,16 +61,12 @@ export async function checkSubscriptionStatus(): Promise<SubscriptionStatusData>
     const planName = (sub.subscription_plans as unknown as { name?: string })?.name || 'مجهول'
     const maxUsers = (sub.subscription_plans as unknown as { max_users?: number })?.max_users || 1
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: overageDataRaw } = await (supabase as any)
+    const { data: overageData } = await supabase
       .from('office_member_overage')
       .select('current_count, max_users, grace_deadline')
       .eq('office_id', officeId)
       .eq('resolved', false)
       .maybeSingle()
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const overageData = overageDataRaw as any
 
     let finalStatus: 'active' | 'past_due' | 'expired' | 'trialing' | 'none' = sub.status as 'active' | 'past_due' | 'expired' | 'trialing' | 'none'
     if (sub.status === 'past_due' && diffDays <= -3) finalStatus = 'expired'

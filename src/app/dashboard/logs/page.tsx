@@ -9,8 +9,7 @@ export default async function LogsPage() {
   const supabase = await createClient()
   
   // Route Guard: Atomic Permission Check
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: hasLogPerm, error: permError } = await (supabase.rpc as any)('has_permission', { p_perm: 'view_audit_logs' })
+  const { data: hasLogPerm, error: permError } = await supabase.rpc('has_permission', { p_perm: 'view_audit_logs' })
   if (permError || !hasLogPerm) {
     redirect('/dashboard')
   }

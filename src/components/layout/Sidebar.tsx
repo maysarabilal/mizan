@@ -7,16 +7,17 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/browser'
 import {
   LayoutDashboard,
-  Briefcase,
+  FolderOpen,
   Users,
-  CalendarDays,
+  Calendar,
   CheckSquare,
-  UsersRound,
+  UserPlus,
   Bell,
   Settings,
   CreditCard,
   ScrollText,
-  LogOut,
+  Menu,
+  HelpCircle,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -37,15 +38,15 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
 
 const ALL_ROUTES = [
   { label: 'لوحة التحكم', icon: LayoutDashboard, href: '/dashboard' },
+  { label: 'القضايا', icon: FolderOpen, href: '/dashboard/cases' },
+  { label: 'الجلسات', icon: Calendar, href: '/dashboard/sessions' },
   { label: 'العملاء', icon: Users, href: '/dashboard/clients' },
-  { label: 'القضايا', icon: Briefcase, href: '/dashboard/cases' },
-  { label: 'الجلسات', icon: CalendarDays, href: '/dashboard/sessions' },
   { label: 'المهام', icon: CheckSquare, href: '/dashboard/tasks' },
-  { label: 'الفريق', icon: UsersRound, href: '/dashboard/team' },
+  { label: 'الفريق', icon: UserPlus, href: '/dashboard/team' },
   { label: 'الإشعارات', icon: Bell, href: '/dashboard/notifications' },
-  { label: 'الاشتراك والباقات', icon: CreditCard, href: '/dashboard/subscription' },
   { label: 'سجلات الرقابة', icon: ScrollText, href: '/dashboard/logs' },
-  { label: 'الإعدادات', icon: Settings, href: '/dashboard/settings' },
+  { label: 'الاشتراك والباقات', icon: CreditCard, href: '/dashboard/subscription', isBottom: true },
+  { label: 'الإعدادات', icon: Settings, href: '/dashboard/settings', isBottom: true },
 ]
 
 export function Sidebar() {
@@ -53,6 +54,7 @@ export function Sidebar() {
   const [userRole, setUserRole] = useState<UserRole>(null)
   const [userPerms, setUserPerms] = useState<Record<string, boolean>>({})
   const [userName, setUserName] = useState<string>('')
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -86,6 +88,9 @@ export function Sidebar() {
     return userPerms[requiredPerm] === true
   })
 
+  const topRoutes = visibleRoutes.filter(r => !r.isBottom)
+  const bottomRoutes = visibleRoutes.filter(r => r.isBottom)
+
   const ROLE_LABELS: Record<string, string> = {
     owner: 'مالك',
     admin: 'مدير',
@@ -95,78 +100,91 @@ export function Sidebar() {
   }
 
   return (
-    <div className="flex flex-col h-full w-64 bg-slate-950 text-white border-l dark:border-zinc-800">
-      <Link href="/dashboard" className="flex h-16 items-center px-6 font-bold text-xl border-b border-slate-900 bg-slate-950/50 backdrop-blur-sm sticky top-0 z-10 hover:bg-slate-900/50 transition-colors">
-        <Image src="/logo.svg" alt="Mizan Logo" width={32} height={32} className="h-8 w-8 me-3 object-contain" />
-        ميزان
-      </Link>
+    <div className={cn("flex flex-col h-full bg-[#1a2744] text-white/80 transition-all duration-300", isCollapsed ? "w-20" : "w-64")}>
+      <div className={cn("flex h-16 items-center bg-[#1a2744]/90 backdrop-blur-sm sticky top-0 z-10 transition-colors", isCollapsed ? "justify-center" : "justify-between px-6")}>
+        {!isCollapsed && (
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <Image src="/logo.svg" alt="Mizan Logo" width={32} height={32} className="h-8 w-8 shrink-0 object-contain" />
+            <span className="font-bold text-xl shrink-0 text-white">ميزان</span>
+          </Link>
+        )}
+        <button 
+          onClick={() => setIsCollapsed(!isCollapsed)} 
+          className={cn("text-white/60 hover:text-white transition-colors shrink-0", isCollapsed ? "p-2 hover:bg-[#243356] rounded-lg" : "")}
+          title={isCollapsed ? "توسيع القائمة" : "طي القائمة"}
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+      </div>
       
-      <div className="flex-1 py-6 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
+      <div className="flex-1 py-6 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-[#243356]">
         <nav className="flex flex-col gap-1.5 px-3">
-          {visibleRoutes.map((route) => {
+          {topRoutes.map((route) => {
             const isActive = pathname === route.href || (pathname.startsWith(`${route.href}/`) && route.href !== '/dashboard')
             return (
               <Link
                 key={route.href}
                 href={route.href}
+                title={isCollapsed ? route.label : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition-all duration-200 group",
+                  "flex items-center rounded-xl py-3 transition-all duration-200 group",
+                  isCollapsed ? "justify-center px-0" : "gap-3 px-4 text-sm",
                   isActive 
-                    ? "bg-primary text-white shadow-lg shadow-primary/40 font-medium" 
-                    : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                    ? "bg-[#243356] text-white border-l-2 border-[#c9a84c] rounded-none rounded-r-xl font-medium" 
+                    : "text-white/80 hover:bg-[#243356]/50 hover:text-white"
                 )}
               >
                 <route.icon className={cn(
-                  "h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110",
-                  isActive ? "text-white" : "text-slate-500 group-hover:text-primary"
+                  "shrink-0 transition-transform duration-200 group-hover:scale-110",
+                  isCollapsed ? "h-6 w-6" : "h-5 w-5",
+                  isActive ? "text-white" : "text-white/60 group-hover:text-white"
                 )} />
-                {route.label}
+                {!isCollapsed && <span className="truncate">{route.label}</span>}
               </Link>
             )
           })}
         </nav>
-      </div>
 
-      {/* User Profile Section with Role Badge & Logout */}
-      <div className="p-4 bg-slate-950 border-t border-slate-900">
-        <div className="flex items-center gap-3">
-          <Link 
-            href="/dashboard/profile" 
-            className="flex-1 flex items-center gap-3 p-2 rounded-xl bg-slate-900/40 border border-slate-900/60 hover:bg-slate-900 hover:border-primary/30 transition-all group"
-          >
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0 group-hover:scale-105 transition-transform">
-              {userName ? userName.charAt(0).toUpperCase() : <UsersRound className="h-4 w-4" />}
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-semibold truncate text-slate-100">
-                {userName || 'جاري التحميل...'}
-              </span>
-              <div className="flex items-center mt-1">
-                <span className={cn(
-                  "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                  userRole === 'owner' ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
-                  userRole === 'admin' ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
-                  userRole === 'lawyer' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                  "bg-slate-500/10 text-slate-400 border-slate-500/20"
-                )}>
-                  {userRole ? ROLE_LABELS[userRole] : '---'}
-                </span>
-              </div>
-            </div>
-          </Link>
+        <nav className="flex flex-col gap-1.5 px-3 mt-auto pt-6">
+          {bottomRoutes.map((route) => {
+            const isActive = pathname === route.href || (pathname.startsWith(`${route.href}/`) && route.href !== '/dashboard')
+            return (
+              <Link
+                key={route.href}
+                href={route.href}
+                title={isCollapsed ? route.label : undefined}
+                className={cn(
+                  "flex items-center rounded-xl py-3 transition-all duration-200 group",
+                  isCollapsed ? "justify-center px-0" : "gap-3 px-4 text-sm",
+                  isActive 
+                    ? "bg-[#243356] text-white border-l-2 border-[#c9a84c] rounded-none rounded-r-xl font-medium" 
+                    : "text-white/80 hover:bg-[#243356]/50 hover:text-white"
+                )}
+              >
+                <route.icon className={cn(
+                  "shrink-0 transition-transform duration-200 group-hover:scale-110",
+                  isCollapsed ? "h-6 w-6" : "h-5 w-5",
+                  isActive ? "text-white" : "text-white/60 group-hover:text-white"
+                )} />
+                {!isCollapsed && <span className="truncate">{route.label}</span>}
+              </Link>
+            )
+          })}
           
-          <button 
-            onClick={async () => {
-              const supabase = createClient()
-              await supabase.auth.signOut()
-              window.location.href = '/login'
-            }}
-            className="h-10 w-10 flex items-center justify-center rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors border border-transparent hover:border-red-500/20"
-            title="تسجيل الخروج"
-          >
-            <LogOut className="h-5 w-5" />
-          </button>
-        </div>
+          <div className={cn("mb-4 mt-2", isCollapsed ? "mx-auto" : "mx-3")}>
+            <div className={cn("bg-[#243356] rounded-xl flex items-center cursor-pointer hover:bg-[#2d3f6b] transition-colors", isCollapsed ? "p-2 justify-center" : "p-4 gap-3")}>
+              <div className="bg-[#c9a84c]/20 rounded-lg p-2 shrink-0">
+                <HelpCircle size={18} className="text-[#c9a84c]" />
+              </div>
+              {!isCollapsed && (
+                <div className="truncate">
+                  <p className="text-white text-sm font-medium truncate">الدعم الفني</p>
+                  <p className="text-white/50 text-xs truncate">تواصل معنا</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </nav>
       </div>
     </div>
   )

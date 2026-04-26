@@ -34,7 +34,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       subscription_plans: {
         Row: {
@@ -67,7 +68,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       offices: {
         Row: {
@@ -94,7 +96,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       office_subscriptions: {
         Row: {
@@ -124,7 +127,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       office_members: {
         Row: {
@@ -160,7 +164,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       invitations: {
         Row: {
@@ -190,7 +195,8 @@ export type Database = {
           created_by?: string
           created_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       subscription_requests: {
         Row: {
@@ -223,7 +229,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       payments: {
         Row: {
@@ -256,7 +263,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       clients: {
         Row: {
@@ -265,6 +273,9 @@ export type Database = {
           name: string
           phone: string | null
           email: string | null
+          id_number: string | null
+          address: string | null
+          avatar_url: string | null
           notes: string | null
           created_at: string
           updated_at: string
@@ -275,6 +286,9 @@ export type Database = {
           name: string
           phone?: string | null
           email?: string | null
+          id_number?: string | null
+          address?: string | null
+          avatar_url?: string | null
           notes?: string | null
           created_at?: string
           updated_at?: string
@@ -285,11 +299,15 @@ export type Database = {
           name?: string
           phone?: string | null
           email?: string | null
+          id_number?: string | null
+          address?: string | null
+          avatar_url?: string | null
           notes?: string | null
           created_at?: string
           updated_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       cases: {
         Row: {
@@ -337,7 +355,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       sessions: {
         Row: {
@@ -382,7 +401,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       tasks: {
         Row: {
@@ -427,7 +447,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       notifications: {
         Row: {
@@ -463,7 +484,8 @@ export type Database = {
           related_entity_id?: string | null
           created_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
       audit_logs: {
         Row: {
@@ -496,7 +518,42 @@ export type Database = {
           details?: Json | null
           created_at?: string
         }
-        Relationships: { foreignKeyName: string; columns: string[]; isOneToOne?: boolean | null; referencedRelation: string; referencedColumns: string[] }[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
+      }
+      office_member_overage: {
+        Row: {
+          id: string
+          office_id: string
+          current_count: number
+          max_users: number
+          grace_deadline: string
+          resolved: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          office_id: string
+          current_count: number
+          max_users: number
+          grace_deadline: string
+          resolved?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          office_id?: string
+          current_count?: number
+          max_users?: number
+          grace_deadline?: string
+          resolved?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
       }
     }
     Views: {
@@ -510,6 +567,12 @@ export type Database = {
       has_role: {
         Args: {
           required_roles: string[]
+        }
+        Returns: boolean
+      }
+      has_permission: {
+        Args: {
+          p_perm: string
         }
         Returns: boolean
       }
@@ -527,6 +590,32 @@ export type Database = {
           role: string
           error: string | null
         }[]
+      }
+      create_office_transaction: {
+        Args: {
+          p_user_id: string
+          p_office_name: string
+          p_plan_id: string
+          p_trial_end: string
+        }
+        Returns: Json
+      }
+      nightly_maintenance: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      search_sessions: {
+        Args: {
+          search_term?: string | null
+          filter_status?: string | null
+          filter_type?: string | null
+          filter_court?: string | null
+          filter_date_from?: string | null
+          filter_date_to?: string | null
+          page_offset?: number
+          page_limit?: number
+        }
+        Returns: any
       }
     }
     Enums: {

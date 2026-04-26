@@ -25,18 +25,41 @@
 2. Check that the action calls `requireAdmin()` before any DB operation.
 3. Admin actions must use `createAdminClient()` — RLS blocks cross-tenant reads.
 
+### Date format crashes in Admin Modals (RangeError: Invalid time value)
+
+**Cause:** Calling `new Date(value).toISOString()` when the field is null, undefined, or an empty string `""` (e.g. in `ManualOverrideModal`).
+**Fix:** Always guard date fields before formatting. Use a helper function:
+```typescript
+function toSafeISO(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+```
+
+### Supabase Types: "Type instantiation is excessively deep and possibly infinite."
+
+**Cause:** Strict typing on the `Relationships: { ... }[]` array in `src/types/database.ts` can cause a TS compiler crash across the entire project due to mapped type limits.
+**Fix:** The `Relationships` array in `database.ts` MUST be typed as `Relationships: any[]` with an `// eslint-disable-next-line @typescript-eslint/no-explicit-any` comment. Do not attempt to strongly type relationships in the generated types.
+
 ### "Column does not exist" or type errors on DB fields
 
 **Cause:** `src/types/database.ts` is stale.
 
 - Verify the column exists in `supabase/migrations/`.
 - If the column was added in a later migration (e.g., `slug`, `billing_cycle`, `permissions`), the types may not include it.
-- Fix: use `as any` cast temporarily, or regenerate types with `npx supabase gen types`.
+- Fix: use `as any` cast temporarily (`(db as any).from(...)`), or regenerate types with `npx supabase gen types`.
+- **Note:** The `office_member_overage` table is currently completely missing from `database.ts`. All queries against it must cast the `supabase` instance to `any`.
 
 ### `has_permission` RPC errors
 
 - This function was added in a later migration and is not in `database.ts` types.
 - Must be called with `as any` cast: `(supabase.rpc as any)('has_permission', { p_perm: 'key' })`.
+
+### React Compiler Warning (`react-hooks/incompatible-library`)
+
+- **Cause:** Using `react-hook-form`'s `watch()` API inside a conditionally rendered `className` or passing it to other components. React Compiler skips memoizing hooks that return non-memoizable functions.
+- **Fix:** This is **safe to ignore** for now in files like `SetupClient.tsx`. Do not attempt to fix it with `useMemo` as it will break the compiler's intent.
 
 ### `subscription.ts` vs `subscriptions.ts` confusion
 

@@ -53,8 +53,8 @@ export async function updateOfficeSettingsAction(values: z.infer<typeof officeSe
     .from('offices')
     .update({ 
       name: result.data.name,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      settings: settingsPayload as any, 
+      // Cast to Json to satisfy Supabase's strict typings
+      settings: settingsPayload as unknown as import('@/types/database').Json, 
       updated_at: new Date().toISOString() 
     })
     .eq('id', memberData)

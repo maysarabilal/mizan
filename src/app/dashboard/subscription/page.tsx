@@ -56,7 +56,7 @@ export default async function SubscriptionPage() {
         <h2 className="text-2xl font-bold tracking-tight mb-6">الباقات المتوفرة</h2>
         <PlansGrid
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          plans={plans as any} 
+          plans={plans} 
           currentPlanId={subscription?.plan_id}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           pendingRequest={pendingRequest as any} 

@@ -56,8 +56,15 @@ Both are valid. The codebase uses map constants in `tasks.ts` actions and export
 
 ## Commit Conventions
 
-- Conventional Commits: `feat:`, `fix:`, `refactor:`, `docs:`
 - One logical change per commit
+- Include schema changes or environment variables in PR notes
+
+## Linting & Type Safety
+
+- The project enforces `npm run lint` with 0 warnings/errors.
+- However, strict type limits exist due to Supabase generated types parsing limitations, and we prioritize compilation resilience over excessive depth.
+- Specifically, `database.ts` generic relations arrays (`Relationships`) MUST be cast as `any[]` and lint rules `// eslint-disable-next-line @typescript-eslint/no-explicit-any` should be used sparingly but decisively around complex DB joins or missing API columns (like `office_member_overage`) rather than re-architecting.
+- React Hook Form's `watch()` throws `react-hooks/incompatible-library` warnings with React Compiler. These are intentional and should be bypassed.
 - Schema-affecting changes explained in commit body
 
 ## Known Technical Debt

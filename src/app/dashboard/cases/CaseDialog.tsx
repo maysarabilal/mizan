@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { FileCheck, FilePlus, FileUp } from 'lucide-react'
 
 import { caseSchema } from '@/lib/validations/cases'
 import { createCaseAction, updateCaseAction } from '@/lib/actions/cases'
@@ -14,6 +15,7 @@ import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
@@ -23,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
+
 
 type CaseRow = Database['public']['Tables']['cases']['Row']
 type Client = Database['public']['Tables']['clients']['Row']
@@ -62,7 +64,6 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
     },
   })
 
-  // Update form if caseItem changes
   useEffect(() => {
     form.reset({
       client_id: caseItem?.client_id || '',
@@ -104,46 +105,50 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-2 border-b">
-          <DialogTitle>{isEditing ? 'تعديل بيانات القضية' : 'إضافة قضية جديدة'}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-[600px] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-black/8 dark:border-zinc-800">
+          <DialogTitle className="text-lg font-bold text-[#0F1724] dark:text-zinc-100">
+            {isEditing ? 'تعديل بيانات القضية' : 'إضافة قضية جديدة'}
+          </DialogTitle>
+          <DialogDescription className="text-[13px] text-[#8B939A]">
             أدخل البيانات الأساسية للقضية للبدء في تتبعها.
           </DialogDescription>
+          <div className="h-[2px] bg-gradient-to-l from-[#C9A84C] via-[#C9A84C]/50 to-transparent mt-3 rounded-full" />
         </DialogHeader>
         
-        <ScrollArea className="flex-1 px-6">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 py-4 pb-20 mt-2">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5 py-5 pb-4">
+              {/* Title */}
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>موضوع القضية *</FormLabel>
+                    <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">موضوع القضية *</FormLabel>
                     <FormControl>
-                      <Input placeholder="مثال: مطالبة مالية بموجب شيك" disabled={isSubmitting} {...field} />
+                      <Input placeholder="مثال: مطالبة مالية بموجب شيك" className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700" disabled={isSubmitting} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               
+              {/* Client + Case number */}
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="client_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>الموكل (العميل) *</FormLabel>
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">الموكل (العميل) *</FormLabel>
                       <Select 
                         disabled={isSubmitting} 
                         onValueChange={(val) => field.onChange(val === '__none__' ? '' : val)} 
                         value={field.value || undefined} 
-                        
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700">
                             <SelectValue placeholder="اختر العميل">
                               {field.value && field.value !== '__none__' 
                                 ? clients.find(c => c.id === field.value)?.name 
@@ -166,9 +171,9 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
                   name="case_number"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>رقم القضية (في المحكمة)</FormLabel>
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">رقم القضية (في المحكمة)</FormLabel>
                       <FormControl>
-                        <Input placeholder="مثال: 145/2026" dir="ltr" className="text-right rtl:text-left" disabled={isSubmitting} {...field} value={field.value || ''} />
+                        <Input placeholder="مثال: 145/2026" dir="ltr" className="text-right rtl:text-left h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700" disabled={isSubmitting} {...field} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -176,16 +181,20 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
                 />
               </div>
 
+              {/* Divider */}
+              <div className="border-t border-dashed border-black/8 dark:border-zinc-800" />
+
+              {/* Type + Status + Priority + Degree */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <FormField
                   control={form.control}
                   name="case_type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>النوع *</FormLabel>
-<Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value} >
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">النوع *</FormLabel>
+                      <Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value} >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -202,10 +211,10 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>الحالة *</FormLabel>
-<Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value} >
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">الحالة *</FormLabel>
+                      <Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value} >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -222,10 +231,10 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
                   name="priority"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>الأهمية *</FormLabel>
-<Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value} >
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">الأهمية *</FormLabel>
+                      <Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value} >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -242,10 +251,10 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
                   name="litigation_degree"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>الدرجة</FormLabel>
-<Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value ?? undefined} >
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">الدرجة</FormLabel>
+                      <Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value ?? undefined} >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700">
                             <SelectValue placeholder="اختر" />
                           </SelectTrigger>
                         </FormControl>
@@ -259,20 +268,20 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
                 />
               </div>
 
+              {/* Assigned lawyer */}
               <FormField
                 control={form.control}
                 name="assigned_to"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>تعيين لمحامي</FormLabel>
+                    <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">تعيين لمحامي</FormLabel>
                       <Select 
                         disabled={isSubmitting} 
                         onValueChange={(val) => field.onChange(val === '__none__' ? null : val)} 
                         value={field.value || undefined} 
-                        
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700">
                             <SelectValue placeholder="غير معين">
                               {field.value && field.value !== '__none__' 
                                 ? teamMembers.find(m => m.user_id === field.value)?.profiles?.full_name 
@@ -294,16 +303,20 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
                 )}
               />
 
+              {/* Divider */}
+              <div className="border-t border-dashed border-black/8 dark:border-zinc-800" />
+
+              {/* Notes */}
               <FormField
                 control={form.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>ملاحظات إضافية</FormLabel>
+                    <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">ملاحظات إضافية</FormLabel>
                     <FormControl>
                       <Textarea 
                         placeholder="تفاصيل، وقائع، ملاحظات..." 
-                        className="resize-none" 
+                        className="resize-none bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700" 
                         rows={4}
                         disabled={isSubmitting} 
                         {...field} 
@@ -314,15 +327,59 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
                   </FormItem>
                 )}
               />
+
+              {/* Divider */}
+              <div className="border-t border-dashed border-black/8 dark:border-zinc-800" />
+
+              {/* Attachments — UI Placeholder */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">المرفقات والمستندات</span>
+                  <Badge variant="secondary" className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-[10px]">
+                    قريباً
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled
+                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
+                    title="قريباً — إرفاق عقد أو توكيل"
+                  >
+                    <FileCheck className="h-3.5 w-3.5" /> إرفاق عقد / توكيل
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
+                    title="قريباً — إرفاق مستند قضائي"
+                  >
+                    <FilePlus className="h-3.5 w-3.5" /> إرفاق مستند قضائي
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
+                    title="قريباً — إرفاق ملف"
+                  >
+                    <FileUp className="h-3.5 w-3.5" /> إرفاق ملف
+                  </button>
+                </div>
+              </div>
             </form>
           </Form>
-        </ScrollArea>
+        </div>
         
-        <div className="flex gap-2 p-6 border-t bg-muted/20 justify-end shrink-0">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+        <div className="flex gap-2 px-6 py-4 border-t border-black/8 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/80 justify-end shrink-0 rounded-b-xl">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="border-black/8">
             إلغاء
           </Button>
-          <Button type="submit" disabled={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            onClick={form.handleSubmit(onSubmit)}
+            className="bg-[#C9A84C] hover:bg-[#b89a42] text-[#1A2744] font-semibold"
+          >
             {isSubmitting ? 'جاري الحفظ...' : 'حفظ القضية'}
           </Button>
         </div>

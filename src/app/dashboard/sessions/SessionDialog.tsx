@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { FileCheck, FilePlus, FileUp } from 'lucide-react'
 
 import { sessionSchema } from '@/lib/validations/sessions'
 import { createSessionAction, updateSessionAction } from '@/lib/actions/sessions'
@@ -14,10 +15,11 @@ import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
+
 
 type SessionRow = Database['public']['Tables']['sessions']['Row']
 type CaseRow = Database['public']['Tables']['cases']['Row']
@@ -99,29 +101,33 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] h-[85vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-2 border-b">
-          <DialogTitle>{isEditing ? 'تعديل بيانات الجلسة' : 'إضافة جلسة أو موعد جديد'}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-[560px] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-black/8 dark:border-zinc-800">
+          <DialogTitle className="text-lg font-bold text-[#0F1724] dark:text-zinc-100">
+            {isEditing ? 'تعديل بيانات الجلسة' : 'إضافة جلسة أو موعد جديد'}
+          </DialogTitle>
+          <DialogDescription className="text-[13px] text-[#8B939A]">
             أدخل تاريخ ومكان انعقاد الجلسة لارتباطها بالقضية.
           </DialogDescription>
+          <div className="h-[2px] bg-gradient-to-l from-[#C9A84C] via-[#C9A84C]/50 to-transparent mt-3 rounded-full" />
         </DialogHeader>
         
-        <ScrollArea className="flex-1 px-6">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 py-4 pb-20 mt-2">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5 py-5 pb-4">
+              {/* Section: القضية */}
               <FormField
                 control={form.control}
                 name="case_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>القضية المرتبطة *</FormLabel>
+                    <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">القضية المرتبطة *</FormLabel>
                     <Select 
                       disabled={isSubmitting || !!preselectedCaseId} 
                       onValueChange={(val) => field.onChange(val === '__none__' ? '' : val)} 
                       value={field.value || undefined} >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700">
                           <SelectValue placeholder="اختر القضية">
                             {field.value && field.value !== '__none__' 
                               ? `${cases.find(c => c.id === field.value)?.case_number} - ${cases.find(c => c.id === field.value)?.title}`
@@ -143,18 +149,22 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
                 )}
               />
 
+              {/* Divider */}
+              <div className="border-t border-dashed border-black/8 dark:border-zinc-800" />
+
+              {/* Section: التوقيت */}
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="session_date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>تاريخ الجلسة *</FormLabel>
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">تاريخ الجلسة *</FormLabel>
                       <FormControl>
                         <Input 
                           type="date" 
                           dir="ltr"
-                          className="text-right rtl:text-left"
+                          className="text-right rtl:text-left h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700"
                           disabled={isSubmitting} 
                           {...field} 
                           value={field.value || ''}
@@ -169,12 +179,12 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
                   name="session_time"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>وقت الجلسة</FormLabel>
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">وقت الجلسة</FormLabel>
                       <FormControl>
                         <Input 
                           type="time" 
                           dir="ltr"
-                          className="text-right rtl:text-left"
+                          className="text-right rtl:text-left h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700"
                           disabled={isSubmitting} 
                           {...field} 
                           value={field.value || ''}
@@ -186,16 +196,17 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
                 />
               </div>
 
+              {/* Section: النوع والحالة */}
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="session_type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>نوع الجلسة *</FormLabel>
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">نوع الجلسة *</FormLabel>
                       <Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value} >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -209,13 +220,13 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
                 />
                 <FormField
                   control={form.control}
-              name="outcome"
+                  name="outcome"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>حالة الجلسة *</FormLabel>
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">حالة الجلسة *</FormLabel>
                       <Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value} >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -229,15 +240,19 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
                 />
               </div>
 
+              {/* Divider */}
+              <div className="border-t border-dashed border-black/8 dark:border-zinc-800" />
+
+              {/* Section: المكان */}
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="court"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>المحكمة / الجهة</FormLabel>
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">المحكمة / الجهة</FormLabel>
                       <FormControl>
-                        <Input placeholder="مثال: المحكمة العمالية" disabled={isSubmitting} {...field} value={field.value || ''} />
+                        <Input placeholder="مثال: المحكمة العمالية" className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700" disabled={isSubmitting} {...field} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -248,9 +263,9 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
                   name="hall"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>تحديد القاعة / الفرع</FormLabel>
+                      <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">تحديد القاعة / الفرع</FormLabel>
                       <FormControl>
-                        <Input placeholder="مثال: قاعة 3" disabled={isSubmitting} {...field} value={field.value || ''} />
+                        <Input placeholder="مثال: قاعة 3" className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700" disabled={isSubmitting} {...field} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -258,16 +273,17 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
                 />
               </div>
 
+              {/* Notes */}
               <FormField
                 control={form.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الطلبات / مذكرات / ملاحظات</FormLabel>
+                    <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">الطلبات / مذكرات / ملاحظات</FormLabel>
                     <FormControl>
                       <Textarea 
                         placeholder="ما المطلوب في هذه الجلسة؟" 
-                        className="resize-none" 
+                        className="resize-none bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700" 
                         rows={3}
                         disabled={isSubmitting} 
                         {...field} 
@@ -278,15 +294,59 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
                   </FormItem>
                 )}
               />
+
+              {/* Divider */}
+              <div className="border-t border-dashed border-black/8 dark:border-zinc-800" />
+
+              {/* Attachments — UI Placeholder */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">المرفقات والمستندات</span>
+                  <Badge variant="secondary" className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-[10px]">
+                    قريباً
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled
+                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
+                    title="قريباً — إرفاق مذكرة"
+                  >
+                    <FileCheck className="h-3.5 w-3.5" /> إرفاق مذكرة
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
+                    title="قريباً — إرفاق طلب"
+                  >
+                    <FilePlus className="h-3.5 w-3.5" /> إرفاق طلب
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
+                    title="قريباً — إرفاق مستند"
+                  >
+                    <FileUp className="h-3.5 w-3.5" /> إرفاق مستند
+                  </button>
+                </div>
+              </div>
             </form>
           </Form>
-        </ScrollArea>
+        </div>
         
-        <div className="flex gap-2 p-6 border-t bg-muted/20 justify-end shrink-0">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+        <div className="flex gap-2 px-6 py-4 border-t border-black/8 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/80 justify-end shrink-0 rounded-b-xl">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="border-black/8">
             إلغاء
           </Button>
-          <Button type="submit" disabled={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            onClick={form.handleSubmit(onSubmit)}
+            className="bg-[#C9A84C] hover:bg-[#b89a42] text-[#1A2744] font-semibold"
+          >
             {isSubmitting ? 'جاري الحفظ...' : 'حفظ الجلسة'}
           </Button>
         </div>

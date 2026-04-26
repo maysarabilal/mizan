@@ -17,7 +17,7 @@ export async function getClients(searchQuery?: string) {
   let query = supabase.from('clients').select('*').order('created_at', { ascending: false })
   
   if (searchQuery) {
-    query = query.ilike('name', `%${searchQuery}%`)
+    query = query.or(`name.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,id_number.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
   }
 
   const { data, error } = await query
@@ -25,6 +25,46 @@ export async function getClients(searchQuery?: string) {
   if (error) {
     console.error('Error fetching clients:', error)
     return { data: null, error: 'فشل في جلب بيانات العملاء' }
+  }
+
+  return { data, error: null }
+}
+
+export async function getClientById(clientId: string) {
+  const subError = await requireActiveSubscription()
+  if (subError) return { data: null, error: subError }
+
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', clientId)
+    .single()
+
+  if (error) {
+    console.error('Error fetching client:', error)
+    return { data: null, error: 'فشل في جلب بيانات العميل' }
+  }
+
+  return { data, error: null }
+}
+
+export async function getClientCases(clientId: string) {
+  const subError = await requireActiveSubscription()
+  if (subError) return { data: null, error: subError }
+
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('cases')
+    .select('*, profiles:assigned_to(full_name), sessions(id, session_date, outcome)')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching client cases:', error)
+    return { data: null, error: 'فشل في جلب قضايا العميل' }
   }
 
   return { data, error: null }
@@ -39,10 +79,6 @@ export async function createClientAction(values: z.infer<typeof clientSchema>): 
 
   const supabase = await createClient()
 
-  // We need to fetch the office_id for the current user to insert
-  // Although we have an RLS policy checking check (office_id = current_office_id()),
-  // the insert statement must provide the office_id explicitly if it's not a default.
-  
   const { data: memberData, error: memberError } = await supabase
     .rpc('current_office_id')
     .single()
@@ -56,6 +92,8 @@ export async function createClientAction(values: z.infer<typeof clientSchema>): 
     name: result.data.name,
     phone: result.data.phone || null,
     email: result.data.email || null,
+    id_number: result.data.id_number || null,
+    address: result.data.address || null,
     notes: result.data.notes || null,
   })
 
@@ -83,6 +121,8 @@ export async function updateClientAction(id: string, values: z.infer<typeof clie
       name: result.data.name,
       phone: result.data.phone || null,
       email: result.data.email || null,
+      id_number: result.data.id_number || null,
+      address: result.data.address || null,
       notes: result.data.notes || null,
     })
     .eq('id', id)
@@ -93,6 +133,7 @@ export async function updateClientAction(id: string, values: z.infer<typeof clie
   }
 
   revalidatePath('/dashboard/clients')
+  revalidatePath(`/dashboard/clients/${id}`)
   return { data: null, error: null }
 }
 

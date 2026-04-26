@@ -50,6 +50,10 @@ src/
 └── types/database.ts                 # Generated Supabase types (often stale)
 ```
 
+## UI Design Tasks
+Read and follow `UI_IMPLEMENTATION_PROTOCOL.md` before
+modifying any UI component or page.
+
 ## Build, Test, and Development Commands
 
 - `npm run dev` — Start the local Next.js dev server.
@@ -137,9 +141,13 @@ Granular permissions stored as `JSONB` in `office_members.permissions`. Keys def
 ## Subscription Engine
 
 - Manual payment model (no Stripe). Admin confirms payments manually.
+- 6 Active Plans (+ Enterprise contact):
+  - Monthly: فردي, مكتب, مؤسسة, مركز قانوني
+  - Yearly: فردي سنوي, مكتب سنوي, مؤسسة سنوي, مركز قانوني سنوي
 - Statuses: `trialing` → `active` → `past_due` → `expired` (with `awaiting_payment`, `pending`, `cancelled`).
 - `SubscriptionGuard` component locks the dashboard when subscription is invalid.
 - 3-day grace period after expiry before full lockout.
+- **Overage System:** If an office has more active members than their plan allows, a 7-day grace period is enforced before lockout.
 - Two action files: `subscription.ts` (status check) and `subscriptions.ts` (CRUD). Be aware of the naming.
 
 ## RTL & Arabic Conventions
@@ -175,11 +183,21 @@ Granular permissions stored as `JSONB` in `office_members.permissions`. Keys def
 - Treat `src/lib/supabase/admin.ts` as server-only.
 - `profiles.is_admin` is the ONLY gate for platform admin access.
 
-## Known Technical Debt
+## Known Technical Debt & Pre-Launch Actions
 
-1. `next.config.ts` has `ignoreBuildErrors: true` — TypeScript errors are suppressed.
-2. `database.ts` types are stale vs the actual schema (13 migrations applied).
-3. Two similarly named action files: `subscription.ts` vs `subscriptions.ts`.
-4. `ActionResult<T>` type is redeclared in every action file instead of being shared.
-5. Some admin actions reference `subscription_plans.billing_cycle` which isn't in the TypeScript types.
+1. `next.config.ts` has `ignoreBuildErrors: false` — TypeScript strictly compiled.
+2. `database.ts` types currently encompass manual patches. The `office_member_overage` table and important RPCs (`create_office_transaction`, etc.) are actively synced.
+3. The `Relationships` array in `database.ts` is explicitly typed as `any[]` (with ESLint disabled) to prevent catastrophic mapped-type compilation errors (`Type instantiation is excessively deep`).
+4. Two similarly named action files: `subscription.ts` vs `subscriptions.ts`.
+5. `ActionResult<T>` type is redeclared in every action file instead of being shared.
 6. `getAdminOverview()` contains a silent data migration that should be a proper migration.
+7. `react-hooks/incompatible-library` on `SetupClient.tsx`: `watch()` API is skipped by React Compiler. This warning is intentionally deferred/left alone.
+8. **CRITICAL DEFERRED TASK:** The project is currently on Supabase Free Plan. Migration `20260405000003_nightly_maintenance.sql` relies on `pg_cron` which is Pro-only. Therefore, `office_subscriptions` status (`past_due`, `expired`) won't update natively. We are relying entirely on the frontend `SubscriptionGuard` to trap users dynamically. When upgrading to Pro, or adopting a github-actions trigger, `nightly_maintenance()` must be scheduled immediately.
+9. **PRE-LAUNCH REQUIREMENT (Resend Domain):** The platform currently uses a development sandbox email (`onboarding@resend.dev`) to bypass Google Workspace limits. *Before official public launch*, a custom domain (e.g., `mizan-app.com`) MUST be purchased, verified in Resend, and the `from` fields in server actions (`onboarding.ts` and `admin.ts`) updated to use the professional domain (e.g., `support@mizan-app.com`).
+
+## 🤖 AI Agent Behavior & Maintenance Rules (CRITICAL)
+
+**CRITICAL OVERRIDE: All agent operations MUST adhere strictly to the rules defined in `.agent/rules/00-strict-execution.mdc`.**
+You are strictly governed by system integrity, dependency awareness, and risk prevention. You MUST read `DEVELOPMENT_LOG.md` before proceeding with any complex task. Or you will be auto-stopped.
+
+**TESTING MANDATE:** Any change that impacts the UI or Admin workflows MUST be thoroughly documented as a repeatable test case in `TESTING_SCENARIOS.md`.

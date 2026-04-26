@@ -34,8 +34,15 @@ Granular permissions are stored in `office_members.permissions` (JSONB). 19 perm
 2. **Trial ends** → status: `past_due` → 3-day grace period (warning banner shown).
 3. **Grace period exceeded** → status: `expired` → dashboard locked via `SubscriptionGuard`.
 4. **Owner requests upgrade** → creates `subscription_request` (status: `pending`). Uses `createAdminClient()` to check for existing pending requests.
-5. **Platform admin approves** → subscription activated, other pending requests for same office auto-rejected.
-6. **Payment required** → admin marks request `awaiting_payment` → office submits payment externally → admin confirms payment → subscription activated.
+5. **Platform admin approves** → request status: `awaiting_payment` (subscription NOT activated).
+6. **Payment confirmed** → admin marks payment confirmed → subscription activated, other pending requests for same office auto-rejected.
+
+### Overage Enforcement
+
+If an office exceeds its `max_users` limit across its active members, it is flagged for overage.
+- A 7-day grace period is initiated (`grace_deadline`).
+- A persistent red warning banner is displayed across the tenant dashboard.
+- If the excess members are not disabled before the deadline, the `SubscriptionGuard` mechanism intercepts and locks the dashboard.
 
 ### Manual Payment Model
 

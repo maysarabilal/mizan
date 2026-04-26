@@ -4,14 +4,15 @@ import {
   Container,
   Head,
   Heading,
-  Hr,
   Html,
   Link,
   Preview,
   Section,
   Text,
+  Tailwind
 } from '@react-email/components'
 import * as React from 'react'
+import { EmailFooter } from './EmailFooter'
 
 interface TeamInvitationEmailProps {
   officeName?: string
@@ -20,125 +21,72 @@ interface TeamInvitationEmailProps {
   role?: string
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://mizan.vercel.app'
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://mizan-app.com'
+
+const ROLE_LABELS: Record<string, string> = {
+  owner: 'مالك مكتب',
+  admin: 'مدير',
+  lawyer: 'محامي',
+  secretary: 'سكرتارية',
+  trainee: 'متدرب',
+}
 
 export const TeamInvitationEmail = ({
-  officeName = 'مكتب العدالة للمحاماة',
-  inviterName = 'أحمد محمد',
-  inviteLink = `${baseUrl}/register?invite=RANDOM_CODE`,
+  officeName = 'مكتب المحاماة',
+  inviterName = 'أستاذ',
+  inviteLink = `${baseUrl}/register?invite=CODE`,
   role = 'lawyer',
 }: TeamInvitationEmailProps) => {
-  const roleText = role === 'lawyer' ? 'محامي' : 'مساعد إداري'
+  const roleText = ROLE_LABELS[role] || 'عضو فريق'
 
   return (
-    <Html dir="rtl" lang="ar">
+    <Html lang="ar" dir="rtl">
       <Head />
       <Preview>دعوة للانضمام إلى {officeName} على منصة ميزان</Preview>
-      <Body style={main}>
-        <Container style={container}>
-          <Heading style={h1}>دعوة للانضمام لفريق العمل</Heading>
-          
-          <Text style={text}>مرحباً بك،</Text>
-          
-          <Text style={text}>
-            لقد قام <strong>{inviterName}</strong> بدعوتك للانضمام إلى <strong>{officeName}</strong> بصلاحية <strong>{roleText}</strong> عبر نظام ميزان السحابي لإدارة مكاتب المحاماة.
-          </Text>
+      <Tailwind>
+        <Body className="bg-slate-50 my-auto mx-auto font-sans text-right" dir="rtl">
+          <Container className="border border-solid border-slate-200 rounded my-[40px] mx-auto p-[20px] bg-white">
+            <Section className="mt-[32px]">
+              <Heading className="text-black text-[24px] font-normal text-center p-0 my-[30px] mx-0">
+                دعوة للانضمام لـ <strong>ميزان</strong>
+              </Heading>
+              
+              <Text className="text-black text-[14px] leading-[24px]">
+                مرحباً بك،
+              </Text>
+              
+              <Text className="text-black text-[14px] leading-[24px]">
+                لقد قام <strong>{inviterName}</strong> بدعوتك للانضمام إلى فريق عمل <strong>{officeName}</strong> بصلاحية <strong>{roleText}</strong> عبر منصة ميزان لإدارة المكاتب القانونية.
+              </Text>
 
-          <Section style={btnContainer}>
-            <Button style={button} href={inviteLink}>
-              قبول الدعوة وإنشاء حساب
-            </Button>
-          </Section>
+              <Section className="text-center mt-[32px] mb-[32px]">
+                <Button
+                  href={inviteLink}
+                  className="bg-amber-600 rounded text-white text-[14px] font-semibold no-underline text-center px-5 py-3"
+                >
+                  قبول الدعوة وإنشاء حساب
+                </Button>
+              </Section>
+              
+              <Text className="text-black text-[14px] leading-[24px]">
+                أو يمكنك نسخ ولصق الرابط التالي في متصفحك:
+                <br />
+                <Link href={inviteLink} className="text-blue-600 underline text-[12px]">
+                  {inviteLink}
+                </Link>
+              </Text>
+              
+              <Text className="text-slate-500 text-[14px] leading-[24px] mt-8">
+                إذا لم تكن تتوقع هذه الدعوة، يمكنك تجاهل هذه الرسالة بأمان.
+              </Text>
 
-          <Text style={text}>
-            أو يمكنك نسخ ولصق الرابط التالي في متصفحك:
-            <br />
-            <Link href={inviteLink} style={anchor}>
-              {inviteLink}
-            </Link>
-          </Text>
-
-          <Hr style={hr} />
-
-          <Text style={footer}>
-            إذا لم تكن تتوقع هذه الدعوة، يمكنك تجاهل هذه الرسالة بأمان.
-          </Text>
-          <Text style={footerLogo}>
-            ميزان - النظام الشامل لإدارة مكاتب المحاماة
-          </Text>
-        </Container>
-      </Body>
+              <EmailFooter />
+            </Section>
+          </Container>
+        </Body>
+      </Tailwind>
     </Html>
   )
 }
 
 export default TeamInvitationEmail
-
-const main = {
-  backgroundColor: '#f8fafc',
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
-}
-
-const container = {
-  margin: '0 auto',
-  padding: '20px 0 48px',
-  width: '580px',
-  maxWidth: '100%',
-}
-
-const h1 = {
-  color: '#0f172a',
-  fontSize: '24px',
-  fontWeight: '700',
-  lineHeight: '40px',
-  margin: '0 0 20px',
-  textAlign: 'center' as const,
-}
-
-const text = {
-  color: '#334155',
-  fontSize: '16px',
-  lineHeight: '26px',
-}
-
-const btnContainer = {
-  textAlign: 'center' as const,
-  margin: '32px 0',
-}
-
-const button = {
-  backgroundColor: '#0f172a', /* primary color */
-  borderRadius: '6px',
-  color: '#fff',
-  fontSize: '16px',
-  textDecoration: 'none',
-  textAlign: 'center' as const,
-  display: 'block',
-  padding: '14px 24px',
-}
-
-const anchor = {
-  color: '#2563eb',
-  textDecoration: 'underline',
-}
-
-const hr = {
-  borderColor: '#e2e8f0',
-  margin: '20px 0',
-}
-
-const footer = {
-  color: '#64748b',
-  fontSize: '14px',
-  lineHeight: '24px',
-}
-
-const footerLogo = {
-  color: '#94a3b8',
-  fontSize: '12px',
-  lineHeight: '24px',
-  textAlign: 'center' as const,
-  marginTop: '32px',
-  fontWeight: 'bold',
-}

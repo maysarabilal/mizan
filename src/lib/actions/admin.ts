@@ -5,6 +5,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/types/actions'
 import { uuidSchema, updateSubscriptionAdminSchema } from '@/lib/validations/admin'
+import { sendEmailSafe } from '@/lib/resend'
+import { OverageWarningEmail } from '@/emails/OverageWarningEmail'
+import { SubscriptionStatusEmail } from '@/emails/SubscriptionStatusEmail'
+import { SubscriptionActivatedEmail } from '@/emails/SubscriptionActivatedEmail'
+import { render } from '@react-email/components'
+import { CONFIG } from '@/lib/constants/config'
 
 /**
  * Verify the current user is a platform admin.
@@ -47,8 +53,8 @@ async function detectAndHandleOverage(db: any, officeId: string, newPlanId: stri
     expiresAt.setDate(expiresAt.getDate() + 7)
 
     // Insert overage constraint limit violation record
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (db as any).from('office_member_overage').insert({
+    // Insert overage constraint limit violation record
+    await db.from('office_member_overage').insert({
       office_id: officeId,
       current_count: activeCount,
       max_users: newMaxUsers,
@@ -77,6 +83,32 @@ async function detectAndHandleOverage(db: any, officeId: string, newPlanId: stri
         title: 'تجاوز حدود خطة الاشتراك',
         body: `تم تغيير خطتك إلى خطة تسمح بـ ${newMaxUsers} أعضاء فقط. لديك 7 أيام لتقليل عدد الأعضاء إلى ${newMaxUsers}. في حال عدم الحل سيتم إيقاف المكتب تلقائياً.`
       })
+
+      // NEW: Send Email Notification to Owner
+      try {
+        const { data: { user: ownerUser } } = await db.auth.admin.getUserById(owner.user_id)
+        
+        if (ownerUser?.email) {
+          const { data: profileData } = await db.from('profiles').select('full_name').eq('id', owner.user_id).single()
+          
+          const htmlBody = await render(OverageWarningEmail({
+            officeName,
+            ownerName: profileData?.full_name || 'المدير',
+            maxUsers: newMaxUsers,
+            currentUsers: activeCount,
+            deadlineText: 'خلال 7 أيام'
+          }))
+
+          sendEmailSafe({
+            from: 'ميزان لدعم المحامين <onboarding@resend.dev>',
+            to: [ownerUser.email],
+            subject: 'عاجل: تنبيه تجاوز الحد الأقصى لأعضاء مكتبك - ميزان',
+            html: htmlBody,
+          })
+        }
+      } catch (err) {
+        console.error('Failed to send overage email:', err)
+      }
     }
 
     // Notify system admins
@@ -91,6 +123,42 @@ async function detectAndHandleOverage(db: any, officeId: string, newPlanId: stri
         body: `مكتب ${officeName} يتجاوز حد خطته الجديدة (${activeCount}/${newMaxUsers}) — مهلة 7 أيام للاستجابة. [عرض المكتب](/admin/offices)`
       }))
       await db.from('notifications').insert(adminNotifs)
+    }
+  } else {
+    // If the active count is within the new limits (e.g. an upgrade happened), 
+    // we MUST automatically resolve any existing overage violations!
+    const { data: existingOverage } = await db
+      .from('office_member_overage')
+      .select('id')
+      .eq('office_id', officeId)
+      .eq('resolved', false)
+      .maybeSingle()
+      
+    if (existingOverage) {
+      await db
+        .from('office_member_overage')
+        .update({ resolved: true, updated_at: new Date().toISOString() })
+        .eq('id', existingOverage.id)
+        
+      // Optionally notify owner that the overage is resolved due to upgrade
+      const { data: owner } = await db
+        .from('office_members')
+        .select('user_id')
+        .eq('office_id', officeId)
+        .eq('role', 'owner')
+        .eq('is_active', true)
+        .limit(1)
+        .single()
+        
+      if (owner) {
+        await db.from('notifications').insert({
+          office_id: officeId,
+          user_id: owner.user_id,
+          type: 'system',
+          title: 'تم تمديد سعة الأعضاء وتنظيم الحساب',
+          body: `بناءً على تحديث اشتراكك إلى باقة تستوعب ${newMaxUsers} أعضاء، تم رفع تقييد الأعضاء عن مكتبك بنجاح.`
+        })
+      }
     }
   }
 }
@@ -127,8 +195,7 @@ export async function getAdminOverview() {
     const totalRevenue = confirmedPayments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0
 
     // Fetch overaged offices count
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: overageList } = await (db as any)
+    const { data: overageList } = await db
       .from('office_member_overage')
       .select('id')
       .eq('resolved', false)
@@ -246,8 +313,7 @@ export async function getOfficesList() {
     }
 
     // 3. Fetch all overage records (unresolved)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: overageRecords } = await (db as any)
+    const { data: overageRecords } = await db
       .from('office_member_overage')
       .select('office_id, current_count, max_users, grace_deadline')
       .eq('resolved', false)
@@ -292,6 +358,22 @@ export async function getOfficesList() {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { office_members, ...rest } = office
       const overage = overageMap.get(office.id) || null
+
+      // Dynamically calculate status matching the client-facing Engine
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sub = rest.office_subscriptions as any
+      if (sub && sub.status !== 'suspended' && sub.status !== 'cancelled') {
+        const now = new Date()
+        const end = new Date(sub.current_period_end)
+        const diffDays = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        
+        let dynamicStatus = sub.status
+        if (sub.status === 'past_due' && diffDays <= -3) dynamicStatus = 'expired'
+        if ((sub.status === 'active' || sub.status === 'trialing') && diffDays < 0) {
+          dynamicStatus = diffDays <= -3 ? 'expired' : 'past_due'
+        }
+        sub.status = dynamicStatus
+      }
 
       return {
         ...rest,
@@ -379,6 +461,47 @@ export async function approveUpgradeRequestAction(requestId: string): Promise<Ac
       .update({ status: 'awaiting_payment', updated_at: new Date().toISOString() })
       .eq('id', requestId)
 
+    // Notify Owner
+    try {
+      const { data: requestWithPlan } = await db
+        .from('subscription_requests')
+        .select('office_id, requested_plan_id, subscription_plans(name)')
+        .eq('id', requestId)
+        .single()
+
+      if (requestWithPlan) {
+        const { data: officeData } = await db.from('offices').select('name').eq('id', requestWithPlan.office_id).single()
+        const { data: owner } = await db
+          .from('office_members')
+          .select('user_id')
+          .eq('office_id', requestWithPlan.office_id)
+          .eq('role', 'owner')
+          .eq('is_active', true)
+          .limit(1)
+          .single()
+
+        if (owner) {
+          const { data: { user: ownerUser } } = await db.auth.admin.getUserById(owner.user_id)
+          if (ownerUser?.email) {
+            const htmlBody = await render(SubscriptionStatusEmail({
+              officeName: officeData?.name || 'مكتبك',
+              planName: (requestWithPlan.subscription_plans as any)?.name || 'الباقة المطلوبة',
+              status: 'approved'
+            }))
+
+            sendEmailSafe({
+              from: CONFIG.RESEND_FROM,
+              to: [ownerUser.email],
+              subject: `تمت الموافقة على طلب ترقية مكتب ${officeData?.name || ''}`,
+              html: htmlBody,
+            })
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to send approval email:', err)
+    }
+
     revalidatePath('/admin')
     revalidatePath('/admin/subscriptions')
     revalidatePath('/dashboard/subscription')
@@ -403,10 +526,52 @@ export async function rejectUpgradeRequestAction(requestId: string): Promise<Act
     await requireAdmin()
     const db = createAdminClient()
 
+    const { data: requestBeforeReject } = await db
+      .from('subscription_requests')
+      .select('office_id, requested_plan_id, subscription_plans(name), admin_note')
+      .eq('id', requestId)
+      .single()
+
     await db
       .from('subscription_requests')
       .update({ status: 'rejected', updated_at: new Date().toISOString() })
       .eq('id', requestId)
+
+    // Notify Owner
+    try {
+      if (requestBeforeReject) {
+        const { data: officeData } = await db.from('offices').select('name').eq('id', requestBeforeReject.office_id).single()
+        const { data: owner } = await db
+          .from('office_members')
+          .select('user_id')
+          .eq('office_id', requestBeforeReject.office_id)
+          .eq('role', 'owner')
+          .eq('is_active', true)
+          .limit(1)
+          .single()
+
+        if (owner) {
+          const { data: { user: ownerUser } } = await db.auth.admin.getUserById(owner.user_id)
+          if (ownerUser?.email) {
+            const htmlBody = await render(SubscriptionStatusEmail({
+              officeName: officeData?.name || 'مكتبك',
+              planName: (requestBeforeReject.subscription_plans as any)?.name || 'الباقة المطلوبة',
+              status: 'rejected',
+              adminNote: requestBeforeReject.admin_note || undefined
+            }))
+
+            sendEmailSafe({
+              from: CONFIG.RESEND_FROM,
+              to: [ownerUser.email],
+              subject: `تحديث بخصوص طلب ترقية مكتب ${officeData?.name || ''}`,
+              html: htmlBody,
+            })
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to send rejection email:', err)
+    }
 
     revalidatePath('/admin')
     revalidatePath('/admin/subscriptions')
@@ -495,6 +660,40 @@ export async function confirmRequestPaymentAction(requestId: string): Promise<Ac
       .in('status', ['pending', 'awaiting_payment'])
       .neq('id', requestId)
 
+    // 8. Notify Owner of Activation
+    try {
+      const { data: officeData } = await db.from('offices').select('name').eq('id', request.office_id).single()
+      const { data: owner } = await db
+        .from('office_members')
+        .select('user_id')
+        .eq('office_id', request.office_id)
+        .eq('role', 'owner')
+        .eq('is_active', true)
+        .limit(1)
+        .single()
+
+      if (owner) {
+        const { data: { user: ownerUser } } = await db.auth.admin.getUserById(owner.user_id)
+        if (ownerUser?.email) {
+          const { format } = await import('date-fns')
+          const htmlBody = await render(SubscriptionActivatedEmail({
+            officeName: officeData?.name || 'مكتبك',
+            planName: (plan as any)?.name || 'الباقة الجديدة',
+            expiryDate: format(expiresAt, 'yyyy-MM-dd')
+          }))
+
+          sendEmailSafe({
+            from: CONFIG.RESEND_FROM,
+            to: [ownerUser.email],
+            subject: `تم تفعيل اشتراك مكتب ${officeData?.name || ''} بنجاح`,
+            html: htmlBody,
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Failed to send activation email:', err)
+    }
+
     revalidatePath('/admin')
     revalidatePath('/admin/subscriptions')
     revalidatePath('/admin/offices')
@@ -572,6 +771,7 @@ export async function updateSubscriptionDirectlyAction(
 
     revalidatePath('/admin')
     revalidatePath('/admin/offices')
+    revalidatePath('/dashboard', 'layout')
     return { data: null, error: null }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
@@ -663,8 +863,7 @@ export async function adminToggleMemberStatusAction(
 
     // If deactivation, auto-resolve overage
     if (!isActive) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const overageDb = (db as any)
+      const overageDb = db
       const { data: overageData } = await overageDb
         .from('office_member_overage')
         .select('id, max_users')
@@ -705,8 +904,7 @@ export async function adminResolveOverageAction(officeId: string): Promise<Actio
     const adminUser = await requireAdmin()
     const db = createAdminClient()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (db as any)
+    const { error } = await db
       .from('office_member_overage')
       .update({ resolved: true, updated_at: new Date().toISOString() })
       .eq('office_id', officeId)
@@ -731,3 +929,60 @@ export async function adminResolveOverageAction(officeId: string): Promise<Actio
   }
 }
 
+export async function forceBackfillOverageAction(): Promise<ActionResult<number>> {
+  try {
+    await requireAdmin()
+    const db = createAdminClient()
+
+    // Get offices that already have an unresolved overage record
+    const { data: unresolved } = await db.from('office_member_overage').select('office_id').eq('resolved', false)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existingIds = new Set((unresolved || []).map((r: any) => r.office_id))
+
+    // 2. Get active members
+    const { data: members } = await db.from('office_members').select('office_id').eq('is_active', true)
+    const memberCounts = new Map<string, number>()
+    if (members) {
+      for (const m of members) {
+        memberCounts.set(m.office_id, (memberCounts.get(m.office_id) || 0) + 1)
+      }
+    }
+
+    // 3. Get office subscriptions and max_users
+    const { data: subscriptions } = await db
+      .from('office_subscriptions')
+      .select('office_id, status, subscription_plans(max_users)')
+      
+    let backfillCount = 0
+
+    if (subscriptions) {
+      for (const sub of subscriptions) {
+        if (existingIds.has(sub.office_id)) continue
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const maxUsers = (sub.subscription_plans as any)?.max_users || 1
+        const activeCount = memberCounts.get(sub.office_id) || 0
+
+        if (activeCount > maxUsers) {
+          const expiresAt = new Date()
+          // Insert overage constraint limit violation record
+          await db.from('office_member_overage').insert({
+            office_id: sub.office_id,
+            current_count: activeCount,
+            max_users: maxUsers,
+            grace_deadline: expiresAt.toISOString(),
+            resolved: false
+          })
+          backfillCount++
+        }
+      }
+    }
+
+    revalidatePath('/admin/offices')
+    return { data: backfillCount, error: null }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error('Failed to backfill overages:', error)
+    return { data: null, error: error.message }
+  }
+}

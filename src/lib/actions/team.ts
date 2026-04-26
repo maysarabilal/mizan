@@ -7,6 +7,9 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/types/actions'
 import { requireActiveSubscription } from '@/lib/actions/subscription'
+import { sendEmailSafe } from '@/lib/resend'
+import { TeamInvitationEmail } from '@/emails/TeamInvitationEmail'
+import { render } from '@react-email/components'
 
 export async function getTeamMembers() {
   const guardError = await requireActiveSubscription()
@@ -167,6 +170,7 @@ export async function generateInviteCodeAction(values: z.infer<typeof inviteSche
     office_id: memberData,
     code,
     role: result.data.role,
+    email: result.data.email || null,
     expires_at: expiresAt.toISOString(),
     created_by: user.id
   })
@@ -174,6 +178,39 @@ export async function generateInviteCodeAction(values: z.infer<typeof inviteSche
   if (error) {
     console.error('Error creating invitation:', error)
     return { data: null, error: 'حدث خطأ أثناء توليد الدعوة' }
+  }
+
+  // Send Email if provided
+  if (result.data.email) {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://mizan-app.com'
+      const inviteLink = `${baseUrl}/register?invite=${code}`
+
+      const { data: officeData } = await supabase
+        .from('offices')
+        .select('name')
+        .eq('id', memberData)
+        .single()
+      
+      const officeName = officeData?.name || 'مكتب محاماة'
+      
+      const htmlBody = await render(TeamInvitationEmail({
+        officeName: officeName,
+        inviterName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'المدير',
+        inviteLink,
+        role: result.data.role
+      }))
+
+      sendEmailSafe({
+        from: 'ميزان لدعم المحامين <onboarding@resend.dev>',
+        to: [result.data.email],
+        subject: `دعوة للانضمام إلى ${officeName} على منصة ميزان`,
+        html: htmlBody,
+      })
+    } catch (err) {
+      console.error('Failed to send invitation email:', err)
+      // We don't return error here because the invitation was created in DB
+    }
   }
 
   revalidatePath('/dashboard/team')
@@ -250,8 +287,7 @@ export async function updateMemberPermissionsAction(values: z.infer<typeof updat
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { data: null, error: 'يجب تسجيل الدخول' }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: hasManagePerm, error: permError } = await (supabase.rpc as any)('has_permission', { p_perm: 'manage_permissions' }).single()
+  const { data: hasManagePerm, error: permError } = await supabase.rpc('has_permission', { p_perm: 'manage_permissions' }).single()
 
   if (permError || !hasManagePerm) {
     return { data: null, error: 'لا تملك صلاحية تعديل صلاحيات الموظفين' }
@@ -379,8 +415,7 @@ export async function toggleMemberStatusAction(id: string, isActive: boolean): P
 
   // Auto-resolve overage logic on deactivation
   if (!isActive) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const overageDb = (adminDb as any)
+    const overageDb = adminDb
 
     const { data: overageData } = await overageDb
       .from('office_member_overage')
@@ -433,8 +468,7 @@ export async function getAuditLogs() {
 
   const supabase = await createClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: hasLogPerm, error: permError } = await (supabase.rpc as any)('has_permission', { p_perm: 'view_audit_logs' }).single()
+  const { data: hasLogPerm, error: permError } = await supabase.rpc('has_permission', { p_perm: 'view_audit_logs' }).single()
   if (permError || !hasLogPerm) {
     return { data: null, error: 'غير مصرح لك بعرض سجلات الرقابة' }
   }
@@ -454,4 +488,56 @@ export async function getAuditLogs() {
   }
 
   return { data, error: null }
+}
+
+export async function getMemberById(memberId: string) {
+  const guardError = await requireActiveSubscription()
+  if (guardError) return { data: null, error: guardError }
+
+  const supabase = await createClient()
+  
+  // 1. Fetch member basic data
+  const { data: member, error } = await supabase
+    .from('office_members')
+    .select(`
+      *,
+      profiles (full_name, phone)
+    `)
+    .eq('id', memberId)
+    .single()
+  
+  if (error || !member) {
+    console.error('Error fetching team member:', error)
+    return { data: null, error: 'عضو الفريق غير موجود' }
+  }
+
+  // 2. Fetch stats and lists (Cases where this user is assigned)
+  const { data: recentCases, count: casesCount } = await supabase
+    .from('cases')
+    .select('*, clients:client_id(name)', { count: 'exact' })
+    .eq('office_id', member.office_id)
+    .eq('assigned_to', member.user_id)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  const { data: recentSessions, count: sessionsCount } = await supabase
+    .from('sessions')
+    .select('*, cases!inner(title, assigned_to)', { count: 'exact' })
+    .eq('office_id', member.office_id)
+    .eq('cases.assigned_to', member.user_id)
+    .order('session_date', { ascending: false })
+    .limit(10)
+
+  return { 
+    data: { 
+      ...member, 
+      stats: { 
+        casesCount: casesCount || 0, 
+        sessionsCount: sessionsCount || 0,
+        recentCases: recentCases || [],
+        recentSessions: recentSessions || []
+      } 
+    }, 
+    error: null 
+  }
 }

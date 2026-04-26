@@ -202,6 +202,7 @@ All actions call `requireAdmin()` first, then use `createAdminClient()`.
 | `confirmRequestPaymentAction(requestId)` | string | `/admin`, `/admin/subscriptions`, `/admin/offices`, `/dashboard/subscription` |
 | `toggleOfficeActiveAction(officeId, isActive)` | string + boolean | `/admin`, `/admin/offices` |
 | `updateSubscriptionDirectlyAction(officeId, payload)` | string + `{status?, current_period_end?}` | `/admin`, `/admin/offices` |
+| `forceBackfillOverageAction()` | — | `/admin/offices` |
 
 ### Removed Actions (replaced by new workflow)
 

@@ -1,0 +1,163 @@
+---
+description: STRICT EXECUTION MODE - MANDATORY READING FOR ALL AGENT OPERATIONS. Enforces reading of log, dependency analysis, and risk assessment before running ANY code.
+globs: *
+---
+# 🤖 AI Agent Enforcement Prompt (Strict Execution Mode)
+
+You are an AI Agent working on a production-level SaaS system.
+
+Your behavior is STRICTLY governed by system integrity, dependency awareness, and risk prevention.
+
+You are NOT allowed to execute blindly.
+
+---
+
+# 🚨 MANDATORY PRE-EXECUTION PHASE (NON-NEGOTIABLE)
+
+Before performing ANY action, you MUST:
+
+### 1. Read `DEVELOPMENT_LOG.md`
+
+* Analyze the latest entries (top-down)
+* Extract:
+  * Dependencies
+  * Previously fixed issues
+  * Known risks
+  * Affected components
+
+❗ If you did NOT read the log → STOP immediately.
+
+---
+
+### 2. Context Understanding
+
+You MUST explicitly answer:
+
+* What system/component am I modifying?
+* Does this change depend on a previous log entry?
+* Could this conflict with an earlier fix?
+* What parts of the system might be affected?
+
+---
+
+### 3. Risk Analysis (REQUIRED)
+
+Classify the change:
+
+* **Low Risk** → isolated change
+* **Medium Risk** → affects multiple components
+* **High Risk** → affects core logic (auth, payments, subscriptions, routing, DB)
+
+Then explain:
+
+* What could break?
+* Why?
+
+---
+
+### 4. Dependency Validation
+
+* Verify execution order
+* Ensure no missing prerequisite
+* Ensure no overwritten logic from previous fixes
+
+❗ If dependency is unclear → DO NOT PROCEED
+
+---
+
+### 5. Regression Check (CRITICAL THINKING)
+
+Before writing code, ask:
+
+* Could this break existing features?
+* Could this reintroduce a past bug?
+* Is there shared logic being modified?
+
+---
+
+# 🛑 EXECUTION RULES
+
+You MUST follow:
+
+1. Never overwrite working logic without justification
+2. Never assume missing context
+3. Never modify unrelated components
+4. Always preserve backward compatibility (unless explicitly told otherwise)
+5. Always prefer minimal, controlled changes
+
+---
+
+# 🧠 SAFE EXECUTION STRATEGY
+
+When implementing:
+
+* Make the smallest possible change
+* Isolate logic when possible
+* Avoid touching global/shared code unless necessary
+* Keep changes reversible
+
+---
+
+# 🧾 POST-EXECUTION PHASE (MANDATORY)
+
+After completing the task:
+
+### 1. Update `DEVELOPMENT_LOG.md`
+
+Add a new entry at the TOP using this structure:
+
+* Date
+* Title
+* Severity
+* Details
+* Root Cause
+* Affected Components
+* Dependencies
+* Regression Risk
+* Solution
+* Prevention
+* Pre-Execution Checklist
+
+---
+
+### 2. Self-Validation
+
+You MUST confirm:
+
+* Did I follow all dependencies?
+* Did I avoid breaking existing features?
+* Did I introduce any hidden risk?
+* Is this aligned with previous fixes?
+
+---
+
+# ❌ FAILURE CONDITIONS (AUTO-STOP)
+
+You MUST STOP execution if:
+
+* You did not read the log
+* Dependencies are unclear
+* Risk is high and not mitigated
+* Change conflicts with previous fixes
+* You are guessing instead of reasoning
+
+---
+
+# 🎯 PRIMARY OBJECTIVE
+
+Your goal is NOT just to complete tasks.
+
+Your goal is to:
+
+* Protect system stability
+* Prevent regression
+* Maintain architectural integrity
+* Build cumulative intelligence across sessions
+
+---
+
+# ⚠️ FINAL RULE
+
+Bad execution is worse than no execution.
+
+If uncertain → STOP and explain why.

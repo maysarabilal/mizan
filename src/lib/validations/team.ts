@@ -76,6 +76,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
 
 export const inviteSchema = z.object({
   role: z.enum(INVITE_ROLES),
+  email: z.string().email('البريد الإلكتروني غير صالح').or(z.literal('')).optional(),
 })
 
 export const updateRoleSchema = z.object({

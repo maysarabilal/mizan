@@ -43,14 +43,18 @@ Tenant root.
 
 ### `subscription_plans`
 
+Stores the 6 active plans (+ 1 Enterprise). Currency is ILS.
+
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid PK | |
-| `name` | text | Arabic plan names |
-| `price_ils` | numeric | |
+| `name` | text | Arabic plan name (e.g. فردي, مكتب, etc) |
+| `price_ils` | numeric | Price in ILS |
 | `max_users` | int | Seat limit |
 | `features` | jsonb | Feature flags |
-| `slug` | text | Added via migration. Used for stable queries |
+| `slug` | text | Unique identifier (e.g., individual, office) |
+| `billing_cycle` | text | 'monthly' or 'yearly' |
+| `is_active` | boolean | Default true |
 
 ### `office_subscriptions`
 
@@ -82,6 +86,19 @@ Tenant root.
 | `payment_method` | text | Default `bank_transfer` |
 | `confirmed_at` | timestamptz | Nullable |
 
+### `office_member_overage`
+Tracks offices that have exceeded their member limit, enforcing a 7-day grace period.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | |
+| `office_id` | uuid FK | UNIQUE |
+| `current_count` | int | Number of active members at detection |
+| `max_users` | int | Limit of the current plan |
+| `grace_deadline` | timestamptz | Date when office will be locked out |
+| `resolved` | boolean | Default false |
+| `created_at` | timestamptz | Auto |
+
 ### `invitations`
 
 | Column | Type | Notes |
@@ -89,6 +106,7 @@ Tenant root.
 | `office_id` | uuid FK | |
 | `code` | text UNIQUE | 6-char uppercase |
 | `role` | text | Role assigned on join |
+| `email` | text | Target email for the invitation (added in Phase 4) |
 | `expires_at` | timestamptz | 7-day TTL |
 | `created_by` | uuid FK | → profiles |
 

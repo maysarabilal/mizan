@@ -1,0 +1,24 @@
+
+> temp-app@0.1.0 lint
+> eslint
+
+
+C:\Users\maysara\Desktop\mizan\src\app\(onboarding)\setup\SetupClient.tsx
+  106:25  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\maysara\Desktop\mizan\src\app\(onboarding)\setup\SetupClient.tsx:106:25
+  104 |                       onClick={() => createForm.setValue('plan_slug', plan.slug)}
+  105 |                       className={`cursor-pointer p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-1 ${
+> 106 |                         createForm.watch('plan_slug') === plan.slug 
+      |                         ^^^^^^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  107 |                           ? 'border-primary bg-primary/5 text-primary' 
+  108 |                           : 'border-zinc-100 hover:border-zinc-200 text-zinc-600'
+  109 |                       }`}  react-hooks/incompatible-library
+
+C:\Users\maysara\Desktop\mizan\src\lib\actions\subscription.ts
+  115:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 2 problems (0 errors, 2 warnings)
+

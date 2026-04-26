@@ -20,8 +20,11 @@ export function SubscriptionGuard({ children, data }: SubscriptionGuardProps) {
   const isOverageRemediationPath = pathname?.startsWith('/dashboard/team') || pathname?.startsWith('/dashboard/subscription')
   const isRemediationMode = !data.isValid && data.lockReason === 'MEMBER_OVERAGE_EXPIRED' && isOverageRemediationPath
 
-  // Plan is valid (Active, trialing, or past_due within 3 days) OR we are in remediation mode for specific routes
-  if (data.isValid || isRemediationMode) {
+  // Also apply remediation mode to EXPIRED trials/plans so they can access the billing page
+  const isExpiredPlanRemediation = !data.isValid && data.lockReason === 'EXPIRED_PLAN' && pathname?.startsWith('/dashboard/subscription')
+
+  // Plan is valid OR we are in remediation mode for specific routes
+  if (data.isValid || isRemediationMode || isExpiredPlanRemediation) {
     return (
       <div className="relative flex flex-col min-h-screen">
         {data.status === 'past_due' && (

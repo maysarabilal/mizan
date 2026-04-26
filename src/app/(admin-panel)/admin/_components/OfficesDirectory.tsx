@@ -3,9 +3,9 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
-import { Building2, Users, Power, PowerOff, UserCog, Mail, Phone, ChevronDown, ChevronUp, AlertTriangle, UserX, UserCheck, Shield } from 'lucide-react'
+import { Building2, Users, Power, PowerOff, UserCog, Mail, Phone, ChevronDown, ChevronUp, AlertTriangle, UserX, UserCheck, Shield, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
-import { toggleOfficeActiveAction, adminToggleMemberStatusAction } from '@/lib/actions/admin'
+import { toggleOfficeActiveAction, adminToggleMemberStatusAction, forceBackfillOverageAction } from '@/lib/actions/admin'
 import { cn } from '@/lib/utils'
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -56,6 +56,14 @@ export function OfficesDirectory({ offices }: { offices: any[] }) {
     toast.success(isActive ? 'تم تفعيل العضو.' : 'تم تعطيل العضو.')
   }
 
+  const handleBackfill = async () => {
+    setProcessing('backfill')
+    const { data: updatedCount, error } = await forceBackfillOverageAction()
+    setProcessing(null)
+    if (error) { toast.error(error); return }
+    toast.success(`تم التحديث بنجاح. تم العثور على ${updatedCount} مكاتب متجاوزة.`)
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active': return <Badge className="bg-emerald-900/30 text-emerald-400 border-emerald-800">فعال</Badge>
@@ -88,23 +96,34 @@ export function OfficesDirectory({ offices }: { offices: any[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-800/80 w-fit">
-        {(['all', 'active', 'suspended', 'expired', 'overage'] as FilterOption[]).map((f) => {
-          const labels: Record<FilterOption, string> = { all: 'الكل', active: 'نشط', suspended: 'موقوف', expired: 'منتهي الاشتراك', overage: 'تجاوز الحد' }
-          return (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                "px-4 py-1.5 text-sm font-medium rounded-md transition-colors",
-                filter === f ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50',
-                f === 'overage' && 'text-red-400'
-              )}
-            >
-              {labels[f]}
-            </button>
-          )
-        })}
+      <div className="flex items-center justify-between">
+        <div className="flex bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-800/80 w-fit">
+          {(['all', 'active', 'suspended', 'expired', 'overage'] as FilterOption[]).map((f) => {
+            const labels: Record<FilterOption, string> = { all: 'الكل', active: 'نشط', suspended: 'موقوف', expired: 'منتهي الاشتراك', overage: 'تجاوز الحد' }
+            return (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  "px-4 py-1.5 text-sm font-medium rounded-md transition-colors",
+                  filter === f ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50',
+                  f === 'overage' && 'text-red-400'
+                )}
+              >
+                {labels[f]}
+              </button>
+            )
+          })}
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={handleBackfill}
+          disabled={processing === 'backfill'}
+          className="border-amber-900/50 text-amber-500 hover:bg-amber-900/20 hover:text-amber-400"
+        >
+          {processing === 'backfill' ? <RefreshCw className="h-4 w-4 me-2 animate-spin" /> : <AlertTriangle className="h-4 w-4 me-2" />}
+          فرض فحص التجاوز
+        </Button>
       </div>
 
       <div className="border border-zinc-800 rounded-xl bg-zinc-900 overflow-hidden">

@@ -1,0 +1,47 @@
+# ============================================================
+# Mizan — Nightly Maintenance Cron Job
+# ============================================================
+# Calls the nightly_maintenance() Postgres function via
+# Supabase Edge Function to transition subscription statuses:
+#   trialing/active → past_due (if current_period_end < now)
+#   past_due → expired (after 7-day grace period)
+#
+# Schedule: Every day at 02:00 UTC
+#
+# Required GitHub Secrets:
+#   - SUPABASE_URL              (e.g. https://xxx.supabase.co)
+#   - SUPABASE_SERVICE_ROLE_KEY (service_role JWT)
+#   - CRON_SECRET               (random hex, e.g. openssl rand -hex 32)
+# ============================================================
+
+name: Nightly Maintenance
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 02:00 UTC daily
+  workflow_dispatch: {}   # Allow manual trigger from GitHub UI
+
+jobs:
+  run-maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Run nightly maintenance
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/nightly-cron" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Nightly maintenance failed with HTTP $HTTP_CODE"
+            exit 1
+          fi

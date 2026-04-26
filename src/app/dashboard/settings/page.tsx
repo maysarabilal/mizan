@@ -8,8 +8,7 @@ export default async function SettingsPage() {
   const supabase = await createClient()
 
   // Route Guard: Atomic Permission Check
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: hasManagePerm, error: permError } = await (supabase.rpc as any)('has_permission', { p_perm: 'manage_team' }).single()
+  const { data: hasManagePerm, error: permError } = await supabase.rpc('has_permission', { p_perm: 'manage_team' }).single()
 
   if (permError || !hasManagePerm) {
     redirect('/dashboard')

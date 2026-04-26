@@ -82,6 +82,7 @@ Isolated in `(admin-panel)` route group with separate layout, dark theme (zinc-9
 | `/admin` | AdminGlobalStats | Dashboard with platform-wide metrics |
 | `/admin/offices` | OfficesDirectory | Office list with subscription details |
 | `/admin/users` | GlobalUsersList | All members across tenants |
+| `/admin/subscriptions` | SubscriptionPlansList / SubscriptionsTable | Manage active plans and logic |
 | `/admin/requests` | PendingRequests | Upgrade request management |
 | `/admin/payments` | PendingPayments | Payment confirmation |
 | `/admin/settings` | — | Platform settings (placeholder) |
@@ -91,6 +92,8 @@ Isolated in `(admin-panel)` route group with separate layout, dark theme (zinc-9
 ```
 src/components/
 ├── layout/          # Sidebar, Topbar, SubscriptionGuard
+│                    # Note: Both Sidebar and AdminSidebar maintain a local `isCollapsed` 
+│                    # state to save space while retaining icon visibility.
 ├── notifications/   # NotificationsList
 └── ui/              # 19 shadcn/ui primitives (avatar, badge, button, card, etc.)
 
