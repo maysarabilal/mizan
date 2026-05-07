@@ -153,7 +153,7 @@ export async function updateTaskAction(id: string, values: z.infer<typeof taskSc
 
   const { data: existingTask, error: taskError } = await supabase
     .from('tasks')
-    .select('case_id')
+    .select('case_id, status, title, created_by, assigned_to')
     .eq('id', id)
     .eq('office_id', member.office_id)
     .single()
@@ -201,6 +201,36 @@ export async function updateTaskAction(id: string, values: z.infer<typeof taskSc
   if (error) {
     console.error('Error updating task:', error)
     return { data: null, error: error.message || 'حدث خطأ أثناء تحديث المهمة' }
+  }
+
+  // Notify on task completion (status changed to مكتملة)
+  if (dbStatus === 'مكتملة' && existingTask.status !== 'مكتملة') {
+    try {
+      const { shouldSendNotification } = await import('@/lib/utils/notifications')
+      const shouldNotify = await shouldSendNotification(member.office_id, 'task_completed')
+
+      if (shouldNotify) {
+        // Notify the task creator (if different from current user)
+        const notifyUserId = existingTask.created_by !== user.id
+          ? existingTask.created_by
+          : existingTask.assigned_to && existingTask.assigned_to !== user.id
+            ? existingTask.assigned_to
+            : null
+
+        if (notifyUserId) {
+          await supabase.from('notifications').insert({
+            office_id: member.office_id,
+            user_id: notifyUserId,
+            type: 'task',
+            title: 'تم إكمال مهمة',
+            body: `تم إكمال المهمة "${existingTask.title}" بواسطة أحد أعضاء الفريق.`,
+            related_entity_id: id,
+          })
+        }
+      }
+    } catch (notifErr) {
+      console.error('Error sending task completion notification:', notifErr)
+    }
   }
 
   revalidatePath('/dashboard/tasks')

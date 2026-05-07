@@ -48,9 +48,10 @@ Stores the 6 active plans (+ 1 Enterprise). Currency is ILS.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid PK | |
-| `name` | text | Arabic plan name (e.g. فردي, مكتب, etc) |
+| `name` | text | Arabic plan name (e.g. الأساس, الاحتراف, etc) |
 | `price_ils` | numeric | Price in ILS |
 | `max_users` | int | Seat limit |
+| `extra_user_price` | numeric | Per-extra-user price (default 0, used for future per-user billing) |
 | `features` | jsonb | Feature flags |
 | `slug` | text | Unique identifier (e.g., individual, office) |
 | `billing_cycle` | text | 'monthly' or 'yearly' |

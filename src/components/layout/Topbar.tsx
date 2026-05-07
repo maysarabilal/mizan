@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback, useTransition } from 'react'
 import Link from 'next/link'
-import { Menu, Search, Bell, HelpCircle, User, LogOut } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Menu, Search, Bell, HelpCircle, User, LogOut, Briefcase, Users, Calendar, ListTodo, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/browser'
+import { globalSearchAction, type SearchResult } from '@/lib/actions/search'
 
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -19,8 +21,22 @@ import {
 import { Sidebar } from './Sidebar'
 import { NewCaseButton } from './NewCaseButton'
 
+const TYPE_CONFIG = {
+  case: { label: 'قضايا', icon: Briefcase, href: (id: string) => `/dashboard/cases/${id}` },
+  client: { label: 'عملاء', icon: Users, href: (id: string) => `/dashboard/clients/${id}` },
+  session: { label: 'جلسات', icon: Calendar, href: (id: string) => `/dashboard/sessions/${id}` },
+  task: { label: 'مهام', icon: ListTodo, href: () => '/dashboard/tasks' },
+} as const
+
 export function Topbar() {
   const [userName, setUserName] = useState<string>('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [results, setResults] = useState<SearchResult[]>([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const containerRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -39,11 +55,65 @@ export function Topbar() {
     fetchUserData()
   }, [])
 
+  // Debounced search
+  const handleSearch = useCallback((value: string) => {
+    setSearchQuery(value)
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (value.trim().length < 2) {
+      setResults([])
+      setShowDropdown(false)
+      return
+    }
+
+    debounceRef.current = setTimeout(() => {
+      startTransition(async () => {
+        const { data } = await globalSearchAction(value)
+        setResults(data ?? [])
+        setShowDropdown(true)
+      })
+    }, 300)
+  }, [])
+
+  // Close on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Close on Escape
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setShowDropdown(false)
+      setSearchQuery('')
+    }
+  }
+
+  const handleResultClick = (result: SearchResult) => {
+    const config = TYPE_CONFIG[result.type]
+    setShowDropdown(false)
+    setSearchQuery('')
+    router.push(config.href(result.id))
+  }
+
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
     window.location.href = '/login'
   }
+
+  // Group results by type
+  const grouped = results.reduce<Record<string, SearchResult[]>>((acc, r) => {
+    if (!acc[r.type]) acc[r.type] = []
+    acc[r.type].push(r)
+    return acc
+  }, {})
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 md:px-6 bg-white dark:bg-zinc-950">
@@ -107,13 +177,62 @@ export function Topbar() {
       <div className="flex items-center gap-4">
         <NewCaseButton />
 
-        <div className="hidden md:flex relative w-64 lg:w-96 items-center">
-          <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="بحث عن قضية أو عميل..."
-            className="w-full bg-[#eef0f4] border-none rounded-lg pl-8 pr-10 rtl:pr-10 rtl:pl-4 focus-visible:ring-1 focus-visible:ring-[#c9a84c] transition-shadow"
-          />
+        <div ref={containerRef} className="hidden md:block relative w-64 lg:w-96">
+          <div className="relative flex items-center">
+            {isPending ? (
+              <Loader2 className="absolute right-3 top-2.5 h-4 w-4 text-[#c9a84c] animate-spin" />
+            ) : (
+              <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
+            )}
+            <Input
+              type="search"
+              placeholder="بحث عن قضية أو عميل..."
+              className="w-full bg-[#eef0f4] border-none rounded-lg pl-8 pr-10 rtl:pr-10 rtl:pl-4 focus-visible:ring-1 focus-visible:ring-[#c9a84c] transition-shadow"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => { if (results.length > 0) setShowDropdown(true) }}
+            />
+          </div>
+
+          {/* Search Results Dropdown */}
+          {showDropdown && (
+            <div className="absolute top-full mt-1 w-full bg-white rounded-lg shadow-lg border border-slate-200 z-50 max-h-80 overflow-y-auto" dir="rtl">
+              {results.length === 0 && !isPending ? (
+                <div className="p-4 text-center text-sm text-slate-500">
+                  لا توجد نتائج
+                </div>
+              ) : (
+                Object.entries(grouped).map(([type, items]) => {
+                  const config = TYPE_CONFIG[type as keyof typeof TYPE_CONFIG]
+                  if (!config) return null
+                  return (
+                    <div key={type}>
+                      <div className="px-3 py-1.5 text-xs font-semibold text-slate-400 bg-slate-50 border-b border-slate-100 flex items-center gap-1.5">
+                        <config.icon className="h-3 w-3" />
+                        {config.label}
+                      </div>
+                      {items.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => handleResultClick(item)}
+                          className="w-full text-right px-3 py-2.5 hover:bg-[#c9a84c]/10 transition-colors flex items-center gap-3 border-b border-slate-50 last:border-b-0"
+                        >
+                          <config.icon className="h-4 w-4 text-[#c9a84c] shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-slate-800 truncate">{item.title}</p>
+                            {item.subtitle && (
+                              <p className="text-xs text-slate-400 truncate">{item.subtitle}</p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          )}
         </div>
       </div>
 

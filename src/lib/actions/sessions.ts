@@ -63,7 +63,7 @@ export async function createSessionAction(values: z.infer<typeof sessionSchema>)
   
   if (!caseRecord) return { data: null, error: 'القضية المحددة غير موجودة' }
 
-    const { error } = await supabase.from('sessions').insert({
+    const { data: newSession, error } = await supabase.from('sessions').insert({
       office_id: member.office_id,
       case_id: result.data.case_id,
       session_date: result.data.session_date,
@@ -73,11 +73,39 @@ export async function createSessionAction(values: z.infer<typeof sessionSchema>)
       session_type: result.data.session_type || undefined,
       outcome: result.data.outcome || undefined,
       notes: result.data.notes || undefined,
-    })
+    }).select('id').single()
 
   if (error) {
     console.error('Error creating session:', error)
     return { data: null, error: error.message || 'حدث خطأ أثناء إضافة الجلسة' }
+  }
+
+  // Notify the assigned lawyer about the new session
+  try {
+    const { shouldSendNotification } = await import('@/lib/utils/notifications')
+    const shouldNotify = await shouldSendNotification(member.office_id, 'session_reminders')
+
+    if (shouldNotify) {
+      // Get the case's assigned lawyer
+      const { data: caseData } = await supabase
+        .from('cases')
+        .select('assigned_to, title')
+        .eq('id', result.data.case_id)
+        .single()
+
+      if (caseData?.assigned_to && caseData.assigned_to !== user.id) {
+        await supabase.from('notifications').insert({
+          office_id: member.office_id,
+          user_id: caseData.assigned_to,
+          type: 'session',
+          title: 'جلسة جديدة',
+          body: `تمت إضافة جلسة جديدة بتاريخ ${result.data.session_date} للقضية "${caseData.title}".`,
+          related_entity_id: newSession?.id || undefined,
+        })
+      }
+    }
+  } catch (notifErr) {
+    console.error('Error sending session notification:', notifErr)
   }
 
   revalidatePath('/dashboard')

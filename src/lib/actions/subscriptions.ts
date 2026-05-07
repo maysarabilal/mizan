@@ -140,7 +140,7 @@ export async function requestPlanUpgradeAction(planId: string): Promise<ActionRe
     return { data: null, error: 'فشل تقديم طلب الترقية، تأكد من أنك تملك صلاحية مدير المكتب.' }
   }
 
-  // Notify Admin
+  // Notify Admin via Email
   try {
     const { data: officeData } = await supabaseAdmin
       .from('offices')
@@ -162,6 +162,36 @@ export async function requestPlanUpgradeAction(planId: string): Promise<ActionRe
     })
   } catch (err) {
     console.error('Failed to notify admin of upgrade request:', err)
+  }
+
+  // In-app notification for subscription updates (respects office preferences)
+  try {
+    const { shouldSendNotification } = await import('@/lib/utils/notifications')
+    const shouldNotify = await shouldSendNotification(memberData, 'subscription_updates')
+
+    if (shouldNotify) {
+      // Notify the owner of the office about the upgrade request
+      const { data: owner } = await supabaseAdmin
+        .from('office_members')
+        .select('user_id')
+        .eq('office_id', memberData)
+        .eq('role', 'owner')
+        .eq('is_active', true)
+        .limit(1)
+        .single()
+
+      if (owner && owner.user_id !== user.id) {
+        await supabaseAdmin.from('notifications').insert({
+          office_id: memberData,
+          user_id: owner.user_id,
+          type: 'payment',
+          title: 'طلب ترقية اشتراك',
+          body: `تم تقديم طلب ترقية إلى الباقة "${(planToRequest as any)?.name || 'غير محددة'}". بانتظار موافقة الإدارة.`,
+        })
+      }
+    }
+  } catch (notifErr) {
+    console.error('Error sending subscription notification:', notifErr)
   }
 
   revalidatePath('/dashboard/subscription')

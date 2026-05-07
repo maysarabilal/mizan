@@ -27,7 +27,312 @@ All AI Agents MUST read this file before performing any complex modification to:
 
 ---
 
-## [2026-04-27] — تفعيل Nightly Maintenance Cron Job (إغلاق الثغرة المؤجلة)
+## [2026-04-27] — ضبط خطط الاشتراك + تحسين تصميم صفحة الاشتراكات [17+18]
+
+**Severity:** High (Production pricing change + DB migration)
+
+**Migration Applied:** `20260427150000_update_plan_prices_and_add_extra_user_price.sql`
+- عمود جديد: `extra_user_price numeric DEFAULT 0`
+- تحديث أسعار كل الخطط النشطة (ILS)
+- تحديث `max_users` (office: 5→10, institution: 15→20)
+- تحديث الأسماء التجارية في DB
+
+**New Pricing (ILS):**
+| slug | name | monthly | yearly | max_users | extra_user_price |
+|---|---|---|---|---|---|
+| individual | الأساس | 40 | 400 | 1 | 0 |
+| office | الاحتراف | 150 | 1,500 | 10 | 20 |
+| institution | الريادة | 300 | 3,000 | 20 | 20 |
+| enterprise | المؤسسات | 0 | — | 9999 | 0 |
+
+**UI Changes — PlansGrid.tsx [REBUILT]:**
+- Toggle شهري/سنوي بتصميم pill مع badge "وفّر ~17%"
+- خطة الاحتراف مميزة كـ "الأكثر شعبية" (ring-2 ring-amber-400)
+- `PLAN_DISPLAY_NAMES` للعرض البصري — لا يعتمد على DB names
+- السعر السنوي يعرض المكافئ الشهري + "يُدفع سنوياً"
+- معلومة الأعضاء الإضافيين تحت السعر
+- Enterprise يعرض "تواصل معنا" بدلاً من السعر
+- قوائم ميزات لكل خطة
+- رمز العملة ₪ (وليس $)
+
+**Page Header — page.tsx [MODIFIED]:**
+- عنوان: "خطط الاشتراك" — نص فرعي: "اختر الخطة المناسبة لمكتبك"
+
+**Affected Files:**
+- `supabase/migrations/20260427150000_update_plan_prices_and_add_extra_user_price.sql` [NEW]
+- `src/app/dashboard/subscription/PlansGrid.tsx` [REBUILT]
+- `src/app/dashboard/subscription/page.tsx` [MODIFIED — header]
+
+**⚠️ قرارات مستقبلية مُسجّلة (لا تنسها):**
+1. **بوابة دفع** — عند إضافتها، استخدم `extra_user_price` لحساب التكلفة الإضافية
+2. **Per-user billing** — `extra_user_price` جاهز في DB ولكن غير مُفعّل بعد
+3. **جدول مقارنة الباقات** — مطلوب لصفحة الهبوط، استخدم `PLAN_FEATURES` من PlansGrid
+4. **Slugs محمية** — لا تعدّل slugs أبداً (مرتبطة بـ subscriptions قائمة)
+
+**Pre-Execution Checklist:**
+- Did you read the latest log entries? Yes.
+- Did you run `npm run build`? Yes — Exit code: 0.
+
+---
+
+## [2026-04-27] — إعادة بناء صفحة المهام: من Kanban إلى جدول + تقويم
+
+**Severity:** High (Architecture change — component removal + dependency deletion)
+
+**Why dnd-kit was removed:**
+مكتبة `@dnd-kit` (core + sortable + utilities) أُزيلت بالكامل للأسباب التالية:
+1. **السحب والإفلات لم يكن يعمل بشكل موثوق** — `handleDragOver` كان يعدّل الـ state قبل `handleDragEnd`، مما يمنع حفظ التغييرات في DB.
+2. **Kanban غير مناسب لسير عمل مكتب المحاماة** — المحامي يحتاج جدول بفلاتر وتقويم شهري، وليس لوحة كانبان.
+3. **تبسيط الـ bundle** — إزالة 4 حزم (`@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`, `@dnd-kit/accessibility`).
+
+**Details:**
+* **حُذفت الملفات:**
+  - `KanbanBoard.tsx` — لوحة كانبان بالكامل
+  - `TaskCard.tsx` — بطاقة المهمة المرتبطة بالكانبان
+* **أُزيلت التبعيات:** `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
+* **أُعيد بناء `TaskTable.tsx`:**
+  - عمود الحالة أصبح dropdown تفاعلي (inline) — تغيير الحالة يحدث مباشرة بـ optimistic update دون فتح Dialog
+  - `useTransition` لتحديث غير حاجب للواجهة
+  - أعمدة الإجراءات (تعديل/حذف) تظهر عند hover
+  - التصميم يطابق هوية صفحة الجلسات
+* **أُنشئ `TaskCalendarView.tsx`:**
+  - منسوخ من `SessionCalendarView.tsx` ومُكيّف للمهام
+  - المهام تظهر في يوم `due_date` بألوان الأولوية: ذهبي=عالية، أزرق=متوسطة، رمادي=منخفضة، أحمر=متأخرة
+  - تنبيه يظهر عدد المهام بدون `due_date`
+  - النقر يفتح `TaskDialog` للتعديل
+* **أُعيد بناء `TasksClient.tsx`:**
+  - Toggle: قائمة / تقويم (بدل كانبان/قائمة) — الافتراضي: قائمة
+  - فلاتر: بحث + حالة + أولوية + قضية مرتبطة + زر مسح
+  - Header يطابق صفحة الجلسات تماماً
+  - Legend (دليل الألوان) يظهر دائماً
+  - `localStorage` بمفتاح `mizan_tasks_view`
+* **`TaskDialog.tsx` لم يُلمس** — قرار تصميمي مُعتمد من صاحب المشروع.
+
+**Affected Files:**
+* `src/app/dashboard/tasks/KanbanBoard.tsx` [DELETED]
+* `src/app/dashboard/tasks/TaskCard.tsx` [DELETED]
+* `src/app/dashboard/tasks/TaskTable.tsx` [REBUILT — inline status, optimistic update]
+* `src/app/dashboard/tasks/TaskCalendarView.tsx` [NEW]
+* `src/app/dashboard/tasks/TasksClient.tsx` [REBUILT — filters, toggle, header]
+* `package.json` [MODIFIED — removed 3 dnd-kit packages]
+
+**Regression Risk:**
+* Medium. KanbanBoard was the primary tasks UI. Full replacement with Table+Calendar.
+* `TaskDialog.tsx` is untouched — all edit/create flows preserved.
+* Server Actions (`tasks.ts`) untouched — all CRUD logic preserved.
+
+**Pre-Execution Checklist:**
+* Did you read the latest log entries? Yes.
+* Did you run `npm run build`? Yes — Exit code: 0.
+
+---
+
+## [2026-04-27] — إصلاحات واجهة وعمليات المهام (Task Fixes)
+
+**Severity:** High (Core functionality bug fixes)
+
+**Details:**
+* **حل مشكلة السحب والإفلات (Drag & Drop):** تم إصلاح خطأ `dnd-kit` في `KanbanBoard.tsx` حيث كان `handleDragOver` يقوم بتحديث الـ state قبل استدعاء الدالة الخاصة بالتحديث في قاعدة البيانات (`handleDragEnd`). تم التقاط الكائن الأصلي (`originalTask`) لمقارنة الحالة بشكل صحيح قبل تحديث قاعدة البيانات، مما أصلح مشكلة سحب المهام بين الأعمدة (مثال: من "قيد الانتظار" إلى "مكتمل").
+* **حل مشكلة التمرير في النافذة المنبثقة:** تم استبدال مكون `ScrollArea` من Shadcn (الذي كان يواجه مشاكل مع Flexbox في الشاشات الصغيرة) إلى `div` قياسي يستخدم `overflow-y-auto` في `TaskDialog.tsx`، مما يضمن ظهور كل الحقول وإمكانية التمرير بسلاسة على أي شاشة.
+* **إضافة خيار الحذف داخل النافذة المنبثقة:** أضيف زر لحذف المهمة نهائياً `Trash2` بجوار أزرار الإلغاء والحفظ داخل الـ `TaskDialog` مع نظام تأكيد (Confirmation).
+* **إضافة أزرار إجراءات صريحة لجدول المهام:** أُضيف عمود "إجراءات" إلى `TaskTable.tsx` يظهر عند التمرير (Hover) على كل صف، محتوياً على أزرار مباشرة لـ (التعديل / الحذف) بدلاً من الاكتفاء بالنقر على الصف.
+
+**Affected Files:**
+* `src/app/dashboard/tasks/KanbanBoard.tsx` [MODIFIED - Drag & drop logic fix]
+* `src/app/dashboard/tasks/TaskDialog.tsx` [MODIFIED - Scroll fix + Delete action]
+* `src/app/dashboard/tasks/TaskTable.tsx` [MODIFIED - Added Action buttons column]
+
+**Regression Risk:**
+* Low. All fixes target localized UI interaction problems without changing database schemas or global states.
+
+**Pre-Execution Checklist:**
+* Did you read the latest log entries? Yes.
+* Did you run `npm run build`? Yes — Exit code: 0.
+
+---
+
+## [2026-04-27] — List View Toggle + هوية صفحة المهام [07 + 11]
+
+**Severity:** Low (UI enhancement, no DB or action changes)
+
+**Details:**
+* أُنشئ `TaskTable.tsx` — جدول عرض قائمة بأعمدة: العنوان، الحالة، الأولوية، تاريخ الاستحقاق، المُسند إليه، القضية.
+  - خلية التاريخ تُلوّن `text-red-600` + أيقونة `AlertTriangle` إذا تجاوز الـ due_date اليوم والمهمة غير مكتملة.
+  - كل صف قابل للنقر → يفتح `TaskDialog` للتعديل.
+* أُنشئ `TasksClient.tsx` — Client Component يملك state الـ view mode:
+  - `viewMode: 'kanban' | 'list'` محفوظ في `localStorage` بمفتاح `mizan_tasks_view`.
+  - يُقرأ من `localStorage` عند أول تحميل (default: 'kanban').
+  - زر Toggle: `LayoutGrid` (لوحة) / `List` (قائمة) — الزر النشط `bg-amber-50 text-[#92741F]`.
+* حُدّث `TaskCard.tsx` — هوية Digital Atelier:
+  - أولوية عالية: `border-amber-400/60 bg-amber-50` + badge لون `#C9A84C`.
+  - أولوية متوسطة: `border-blue-300/60 bg-blue-50`.
+  - أولوية منخفضة: `border-gray-200 bg-gray-50`.
+  - متأخرة: `border-red-400 bg-red-50` (يُلغي لون الأولوية).
+  - `isOverdue` يتحقق من `status !== 'مكتملة'` بالعربية (متوافق مع DB).
+* حُدّث `TaskDialog.tsx` — تصميم Digital Atelier المميز:
+  - رأس نافذة بمتدرج أزرق/ذهبي مع لمسات ضوئية.
+  - إضافة أيقونات (Lucide) لكل حقل بيانات لتحسين Scannability.
+  - حقول إدخال مطورة بحواف `rounded-xl` وتأثيرات تركيز ذهبية.
+  - استخدام حدود متقطعة (Dashed borders) للحقول الاختيارية.
+  - زر تنفيذ العمليات بلون أزرق عميق مع تأثيرات حركية عند التفاعل.
+* حُدّث `page.tsx` — Server Component نظيف يمرر البيانات لـ `TasksClient`.
+* Header الصفحة يطابق الآن نمط `/dashboard/cases`: عنوان + badge العدد + أزرار.
+
+**Affected Files:**
+* `src/app/dashboard/tasks/TaskTable.tsx` [NEW]
+* `src/app/dashboard/tasks/TasksClient.tsx` [NEW]
+* `src/app/dashboard/tasks/TaskCard.tsx` [MODIFIED — priority colors + isOverdue fix]
+* `src/app/dashboard/tasks/page.tsx` [MODIFIED — delegated to TasksClient]
+
+**Regression Risk:**
+* Low. `KanbanBoard.tsx` لم يُلمس. `TaskDialog.tsx` لم يُلمس.
+* `isOverdue` في `TaskCard` كان يتحقق من `status !== 'done'` (قيمة إنجليزية) — الآن صُحّح لـ `'مكتملة'` (قيمة DB الحقيقية). هذا إصلاح وليس regression.
+
+**Pre-Execution Checklist:**
+* Did you read the latest log entries? Yes.
+* Did you run `npm run build`? Yes — Exit code: 0.
+
+---
+
+## [2026-04-27] — بحث موحّد في Topbar (Global Search)
+
+**Severity:** Low (feature addition, no breaking changes)
+
+**Details:**
+* أُنشئ **Supabase RPC** `global_search(search_query text)` عبر migration — يبحث في `cases`, `clients`, `sessions`, `tasks` مع حماية multi-tenancy عبر `current_office_id()`.
+* كل subquery محدود بـ `LIMIT 5` — أقصى 20 نتيجة إجمالية.
+* أُنشئ **Server Action** في `src/lib/actions/search.ts` — يستدعي الـ RPC مع validation (min 2 chars).
+* تم تحويل `<Input>` الموجود في `Topbar.tsx` من عنصر زخرفي إلى بحث وظيفي:
+  - Debounce 300ms لتقليل الاستعلامات
+  - Dropdown يعرض نتائج مُجمّعة بالنوع مع أيقونات Lucide
+  - Loading spinner أثناء البحث
+  - Click على نتيجة → navigation للصفحة المناسبة
+  - Escape أو click-outside → إغلاق Dropdown
+  - لا dependencies جديدة — Tailwind + Lucide فقط
+
+**Root Cause:**
+* الـ `<Input>` في Topbar كان placeholder بصري بدون أي ربط بالبيانات.
+
+**Affected Components:**
+* `supabase/migrations/..._global_search_rpc.sql` [NEW — via MCP]
+* `src/lib/actions/search.ts` [NEW]
+* `src/components/layout/Topbar.tsx` — أُعيد كتابته مع الحفاظ على كل العناصر الأصلية
+* `src/types/database.ts` — أُضيف `global_search` لـ Functions block
+
+**Dependencies:**
+* يعتمد على `current_office_id()` DB function (موجودة منذ init).
+* يعتمد على RLS policies الموجودة على كل الجداول.
+
+**Regression Risk:**
+* Low. الـ Topbar أُعيد كتابته بالكامل لكن بنفس العناصر والأنماط الأصلية بالضبط. لا تغيير في Layout أو Sidebar.
+* الـ `database.ts` أُضيف إليه type فقط — لا تعديل على types موجودة.
+
+**Solution:**
+* Supabase RPC + Server Action + Client-side debounced search في Topbar.
+
+**Prevention:**
+* عند إضافة modules جديدة (مثلاً documents)، يجب تحديث الـ `global_search` RPC بـ `UNION ALL` جديد.
+* عند تغيير schema لأي جدول مُشمول في البحث، راجع الـ RPC.
+
+**Pre-Execution Checklist (for future agents):**
+* Did you read the latest log entries? Yes.
+* Did you run `npm run build`? Yes — Exit code: 0.
+
+---
+
+## [2026-04-27] — إشعارات تلقائية للمهام المتأخرة (Overdue Task Alerts)
+
+**Severity:** Medium
+
+**Details:**
+* أُنشئت **Supabase Edge Function** باسم `check-overdue-tasks` (status: ACTIVE, verify_jwt: false).
+* تبحث عن مهام تجاوزت `due_date` مع `status != 'مكتملة'` و `assigned_to IS NOT NULL`.
+* الاستعلام يعمل بدون `WHERE office_id` عمداً — service_role context على كل المكاتب.
+* لكل مهمة: تتحقق من `shouldSendNotification(office_id, 'task_completed')` عبر `offices.settings`.
+* **منع التكرار:** تفحص إذا أُرسل إشعار بعنوان "مهمة متأخرة" لنفس الـ `related_entity_id` اليوم.
+* **تحسين أداء:** تُخزّن إعدادات المكاتب في `Map` cache لتجنب تكرار الاستعلام لنفس المكتب.
+* أُضيف كخطوة ثانية في `.github/workflows/nightly-maintenance.yml` بعد `nightly-cron`.
+* رُفع `timeout-minutes` من 2 إلى 5 لاستيعاب الخطوتين.
+
+**Root Cause:**
+* `TaskCard.tsx` يحسب `isOverdue` بصرياً فقط — المستخدم يجب أن يدخل لصفحة المهام ليرى ذلك. لا يوجد إشعار تلقائي.
+
+**Affected Components:**
+* Supabase Edge Function `check-overdue-tasks` [NEW — deployed via MCP]
+* `.github/workflows/nightly-maintenance.yml` — أُضيف Step 2
+
+**Dependencies:**
+* يعتمد على جدول `tasks` (أعمدة: `due_date`, `status`, `assigned_to`, `office_id`).
+* يعتمد على `offices.settings` JSONB لتفضيلات الإشعارات.
+* يستخدم نفس `CRON_SECRET` المُعدّ في الخطوة [01].
+* يجب إضافة `CRON_SECRET` في Supabase Edge Function Secrets لهذه الـ Function أيضاً (تلقائياً مشترك إذا أُعدّ كـ project-level secret).
+
+**Regression Risk:**
+* Zero. لا يعدّل أي كود Frontend أو DB schema. Edge Function معزولة.
+
+**Solution:**
+* Edge Function تنفّذ دورياً عبر GitHub Action وتُنشئ صفوفاً في `notifications` للمهام المتأخرة.
+
+**Prevention:**
+* لا تُضف `WHERE office_id = current_office_id()` — هذه تعتمد على `auth.uid()` غير المتاح في سياق service_role.
+* عند إضافة أنواع إشعارات جديدة للـ Cron، اتبع نفس نمط deduplication عبر `related_entity_id` + `title` + تاريخ اليوم.
+
+**Pre-Execution Checklist (for future agents):**
+* Did you read the latest log entries? Yes.
+* Did you run `npm run build`? Yes — Exit code: 0.
+
+---
+
+## [2026-04-27] — تطبيق تفضيلات الإشعارات فعلياً (Notification Preferences Enforcement)
+
+**Severity:** Medium
+
+**Details:**
+* أنشئ `src/lib/utils/notifications.ts` يحتوي دالة `shouldSendNotification()` تقرأ تفضيلات الإشعارات من `offices.settings` JSONB.
+* تدعم 3 أنواع: `session_reminders`, `task_completed`, `subscription_updates`.
+* تُعيد `true` افتراضياً إذا فشل جلب الإعدادات (لا تكتم الإشعارات بسبب أخطاء).
+* تم ربط الدالة في 4 ملفات Server Actions:
+
+| الملف | الحدث | نوع التفضيل | المُشعَر |
+|---|---|---|---|
+| `tasks.ts` | إكمال مهمة (→ مكتملة) | `task_completed` | منشئ المهمة أو المُكلّف |
+| `sessions.ts` | إنشاء جلسة جديدة | `session_reminders` | المحامي المُسند للقضية |
+| `subscriptions.ts` | طلب ترقية اشتراك | `subscription_updates` | مالك المكتب |
+| `cases.ts` | إسناد قضية (إنشاء + تعديل) | `session_reminders` | المحامي المُسند الجديد |
+
+**Root Cause:**
+* `SettingsForm.tsx` كان يحفظ التفضيلات في DB بنجاح، لكن لا يوجد كود يقرأها قبل `INSERT INTO notifications`. كانت مجرد switches بدون تأثير فعلي.
+
+**Affected Components:**
+* `src/lib/utils/notifications.ts` [NEW]
+* `src/lib/actions/tasks.ts` — أُضيف إشعار إكمال المهمة + فحص التفضيل
+* `src/lib/actions/sessions.ts` — أُضيف إشعار إنشاء جلسة + فحص التفضيل
+* `src/lib/actions/subscriptions.ts` — أُضيف إشعار طلب ترقية + فحص التفضيل
+* `src/lib/actions/cases.ts` — أُضيف إشعار إسناد قضية (create + update) + فحص التفضيل
+
+**Dependencies:**
+* يعتمد على عمود `offices.settings` JSONB (موجود منذ `20260327000000_init.sql`).
+* يعتمد على جدول `notifications` (موجود منذ الـ init migration).
+* لا يعتمد على أي حزمة جديدة.
+
+**Regression Risk:**
+* Low. جميع كتل الإشعار ملفوفة بـ `try/catch` (fire-and-forget). فشل الإشعار لا يؤثر على العملية الأساسية.
+* تغيير في `cases.ts`: أُضيف `supabase.auth.getUser()` + `.select('id').single()` للـ insert — هذا لازم لتحديد من يجب إشعاره.
+* تغيير في `tasks.ts`: أُضيف حقول إضافية لـ `existingTask` select (`status, title, created_by, assigned_to`).
+* تغيير في `sessions.ts`: الـ insert أصبح يُرجع `.select('id').single()` للحصول على `related_entity_id`.
+
+**Solution:**
+* دالة مركزية واحدة (`shouldSendNotification`) تُستدعى من كل نقطة إنشاء إشعار. dynamic import لتجنب circular dependencies.
+
+**Prevention:**
+* أي إشعار جديد يُضاف مستقبلاً **يجب** أن يستدعي `shouldSendNotification()` أولاً.
+* لا تُضف أنواع تفضيل جديدة بدون إضافتها في `SettingsForm.tsx` و `officeSettingsSchema`.
+
+**Pre-Execution Checklist (for future agents):**
+* Did you read the latest log entries? Yes.
+* Did you run `npm run build`? Yes — Exit code: 0.
+
+---
 
 **Severity:** High
 

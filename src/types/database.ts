@@ -617,6 +617,17 @@ export type Database = {
         }
         Returns: any
       }
+      global_search: {
+        Args: {
+          search_query: string
+        }
+        Returns: {
+          type: string
+          id: string
+          title: string
+          subtitle: string | null
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
