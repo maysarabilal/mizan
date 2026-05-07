@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -25,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 type MemberRowExt = Database['public']['Tables']['office_members']['Row'] & {
-  profiles: { full_name: string, phone: string | null } | null
+  profiles: { full_name: string, phone: string | null, avatar_url: string | null } | null
 }
 type InvitationRow = Database['public']['Tables']['invitations']['Row']
 
@@ -100,8 +101,12 @@ function PermissionsDialog({ member, onClose }: PermissionsDialogProps) {
 
         <DialogHeader className="px-6 pt-5 pb-3 shrink-0">
           <DialogTitle className="flex items-center gap-3 text-[17px] font-bold text-[#0F1724]">
-            <div className="w-9 h-9 rounded-full bg-[#F0EAD6] flex items-center justify-center shrink-0">
-              <span className="text-[13px] font-bold text-[#3B3A33]">{initials}</span>
+            <div className="w-9 h-9 rounded-full bg-[#F0EAD6] flex items-center justify-center shrink-0 overflow-hidden">
+              {member.profiles?.avatar_url ? (
+                <Image src={member.profiles.avatar_url} alt={member.profiles.full_name || ''} width={36} height={36} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-[13px] font-bold text-[#3B3A33]">{initials}</span>
+              )}
             </div>
             <div className="flex flex-col gap-0.5">
               <span>تخصيص صلاحيات — {member.profiles?.full_name}</span>
@@ -298,8 +303,12 @@ export function TeamMemberList({
                       {/* Member Info */}
                       <TableCell className="py-3 px-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-[#F0EAD6] flex items-center justify-center shrink-0 border border-[#C9A84C]/20">
-                            <span className="text-[12px] font-bold text-[#3B3A33]">{initials}</span>
+                          <div className="w-9 h-9 rounded-full bg-[#F0EAD6] flex items-center justify-center shrink-0 border border-[#C9A84C]/20 overflow-hidden">
+                            {member.profiles?.avatar_url ? (
+                              <Image src={member.profiles.avatar_url} alt={member.profiles?.full_name || ''} width={36} height={36} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-[12px] font-bold text-[#3B3A33]">{initials}</span>
+                            )}
                           </div>
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2">

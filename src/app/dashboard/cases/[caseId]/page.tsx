@@ -52,10 +52,20 @@ async function CaseDetailContent({ params }: CaseDetailPageProps) {
     notFound()
   }
 
+  // Get current user ID and role for attachments permissions
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: member } = await supabase
+    .from('office_members')
+    .select('role')
+    .eq('user_id', user?.id || '')
+    .single()
+
   return (
     <CaseDetailClient
       caseData={caseResult.data}
       sessions={sessionsResult.data || []}
+      currentUserId={user?.id || ''}
+      userRole={member?.role || ''}
     />
   )
 }

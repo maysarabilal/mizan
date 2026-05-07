@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { Eye, MoreHorizontal, Pencil, Trash2, Phone, Mail, MapPin, CreditCard } from 'lucide-react'
+import Image from 'next/image'
 import { Database } from '@/types/database'
 import { deleteClientAction } from '@/lib/actions/clients'
 import { Button } from '@/components/ui/button'
@@ -77,9 +78,9 @@ export function ClientTableList({ clients }: { clients: Client[] }) {
                   {/* Client Name + Avatar */}
                   <TableCell className="py-3 px-5">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#F0EAD6] flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-[#F0EAD6] flex items-center justify-center shrink-0 overflow-hidden">
                         {client.avatar_url ? (
-                          <img src={client.avatar_url} alt={client.name} className="w-9 h-9 rounded-full object-cover" />
+                          <Image src={client.avatar_url} alt={client.name} width={36} height={36} className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-[12px] font-bold text-[#3B3A33]">{getInitials(client.name)}</span>
                         )}

@@ -25,10 +25,12 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { SessionDialog } from '@/app/dashboard/sessions/SessionDialog'
 import { deleteSessionAction } from '@/lib/actions/sessions'
+import { getCaseAttachments, uploadCaseAttachment, deleteCaseAttachment } from '@/lib/actions/attachments'
+import { AttachmentsSection } from '@/components/attachments/AttachmentsSection'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function CaseDetailClient({ caseData, sessions }: { caseData: any, sessions: any[] }) {
+export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }: { caseData: any, sessions: any[], currentUserId: string, userRole: string }) {
   const router = useRouter()
   const [addSessionOpen, setAddSessionOpen] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -272,12 +274,10 @@ export function CaseDetailClient({ caseData, sessions }: { caseData: any, sessio
             {/* PLACEHOLDER — Documents feature not implemented */}
             <TabsTrigger
               value="documents"
-              disabled
-              title="قريباً — ميزة المستندات قيد التطوير"
-              className="flex items-center gap-2 px-6 py-4 rounded-none border-b-2 border-transparent data-[state=inactive]:text-[#9AA3B2] font-medium text-sm bg-transparent shadow-none opacity-60 cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-4 rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A2744] data-[state=active]:text-[#1A2744] data-[state=inactive]:text-[#9AA3B2] font-medium text-sm bg-transparent shadow-none"
             >
               <FileText className="h-4 w-4" />
-              المستندات
+              المرفقات
             </TabsTrigger>
             {/* PLACEHOLDER — Tasks per-case linking not implemented */}
             <TabsTrigger
@@ -396,12 +396,16 @@ export function CaseDetailClient({ caseData, sessions }: { caseData: any, sessio
             )}
           </TabsContent>
 
-          <TabsContent value="documents" className="m-0">
-            <div className="flex flex-col items-center justify-center p-16 text-center">
-              <FileText className="h-10 w-10 text-muted-foreground opacity-20 mb-3" />
-              <p className="font-medium text-[#0F1724]">لا توجد مستندات</p>
-              <p className="text-sm text-[#9AA3B2] mt-1">ميزة المستندات قيد التطوير</p>
-            </div>
+          <TabsContent value="documents" className="m-0 p-6">
+            <AttachmentsSection
+              entityId={caseData.id}
+              entityType="case"
+              currentUserId={currentUserId}
+              userRole={userRole}
+              fetchAttachments={getCaseAttachments}
+              uploadAttachment={uploadCaseAttachment}
+              deleteAttachment={deleteCaseAttachment}
+            />
           </TabsContent>
 
           <TabsContent value="tasks" className="m-0">

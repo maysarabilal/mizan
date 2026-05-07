@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { Menu, Search, Bell, HelpCircle, User, LogOut, Briefcase, Users, Calendar, ListTodo, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/browser'
 import { globalSearchAction, type SearchResult } from '@/lib/actions/search'
@@ -30,6 +31,7 @@ const TYPE_CONFIG = {
 
 export function Topbar() {
   const [userName, setUserName] = useState<string>('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
@@ -46,11 +48,12 @@ export function Topbar() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, avatar_url')
         .eq('id', user.id)
         .single()
 
       if (profile?.full_name) setUserName(profile.full_name)
+      if (profile?.avatar_url) setAvatarUrl(profile.avatar_url)
     }
     fetchUserData()
   }, [])
@@ -133,8 +136,14 @@ export function Topbar() {
         {/* User Avatar Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger className="focus:outline-none shrink-0 group">
-            <div className="h-10 w-10 rounded-full bg-[#c9a84c]/20 flex items-center justify-center text-[#c9a84c] font-bold text-sm group-hover:scale-105 transition-transform">
-              {userName ? userName.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
+            <div className="h-10 w-10 rounded-full bg-[#c9a84c]/20 flex items-center justify-center text-[#c9a84c] font-bold text-sm group-hover:scale-105 transition-transform overflow-hidden">
+              {avatarUrl ? (
+                <Image src={avatarUrl} alt={userName || 'avatar'} width={40} height={40} className="w-full h-full object-cover" />
+              ) : userName ? (
+                userName.charAt(0).toUpperCase()
+              ) : (
+                <User className="h-4 w-4" />
+              )}
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56" dir="rtl">

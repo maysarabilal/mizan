@@ -15,6 +15,8 @@ export type Database = {
           full_name: string
           phone: string | null
           is_admin: boolean
+          avatar_url: string | null
+          job_title: string | null
           created_at: string
           updated_at: string
         }
@@ -23,6 +25,8 @@ export type Database = {
           full_name: string
           phone?: string | null
           is_admin?: boolean
+          avatar_url?: string | null
+          job_title?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -31,6 +35,8 @@ export type Database = {
           full_name?: string
           phone?: string | null
           is_admin?: boolean
+          avatar_url?: string | null
+          job_title?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -77,6 +83,13 @@ export type Database = {
           name: string
           settings: Json
           is_active: boolean
+          logo_url: string | null
+          specialization: string | null
+          license_number: string | null
+          address: string | null
+          working_days: Json
+          working_hours_start: string | null
+          working_hours_end: string | null
           created_at: string
           updated_at: string
         }
@@ -85,6 +98,13 @@ export type Database = {
           name: string
           settings?: Json
           is_active?: boolean
+          logo_url?: string | null
+          specialization?: string | null
+          license_number?: string | null
+          address?: string | null
+          working_days?: Json
+          working_hours_start?: string | null
+          working_hours_end?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -93,6 +113,13 @@ export type Database = {
           name?: string
           settings?: Json
           is_active?: boolean
+          logo_url?: string | null
+          specialization?: string | null
+          license_number?: string | null
+          address?: string | null
+          working_days?: Json
+          working_hours_start?: string | null
+          working_hours_end?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -551,6 +578,80 @@ export type Database = {
           resolved?: boolean
           created_at?: string
           updated_at?: string
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
+      }
+      case_attachments: {
+        Row: {
+          id: string
+          case_id: string
+          office_id: string
+          uploaded_by: string
+          file_name: string
+          file_url: string
+          file_type: string
+          file_size: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          case_id: string
+          office_id: string
+          uploaded_by: string
+          file_name: string
+          file_url: string
+          file_type: string
+          file_size: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          case_id?: string
+          office_id?: string
+          uploaded_by?: string
+          file_name?: string
+          file_url?: string
+          file_type?: string
+          file_size?: number
+          created_at?: string
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
+      }
+      session_attachments: {
+        Row: {
+          id: string
+          session_id: string
+          office_id: string
+          uploaded_by: string
+          file_name: string
+          file_url: string
+          file_type: string
+          file_size: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          office_id: string
+          uploaded_by: string
+          file_name: string
+          file_url: string
+          file_type: string
+          file_size: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          office_id?: string
+          uploaded_by?: string
+          file_name?: string
+          file_url?: string
+          file_type?: string
+          file_size?: number
+          created_at?: string
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         Relationships: any[]

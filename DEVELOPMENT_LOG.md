@@ -27,6 +27,170 @@ All AI Agents MUST read this file before performing any complex modification to:
 
 ---
 
+## [2026-05-07] — Phase B: Case & Session Attachments
+
+**Severity:** Medium (new DB tables + RLS + server actions + UI)
+
+**Step 0 — Discovery Results:**
+- Cases table: `cases` (PK: `id uuid`)
+- Sessions table: `sessions` (PK: `id uuid`)
+- Case detail: `/dashboard/cases/[caseId]`
+- Session detail: `/dashboard/sessions/[sessionId]`
+- No existing `case_attachments` or `session_attachments` tables
+- Roles: `owner`, `admin`, `lawyer`, `secretary`, `trainee`
+
+**Database Migration:**
+- Migration file: `supabase/migrations/20260507_attachments.sql`
+- Created `case_attachments` table (9 columns, RLS enabled)
+- Created `session_attachments` table (9 columns, RLS enabled)
+- RLS policies: SELECT/INSERT for office members, DELETE for uploader or admin/owner
+
+**Type Updates:**
+- `database.ts`: Added `case_attachments` and `session_attachments` full Row/Insert/Update types
+
+**Server Actions (NEW FILE):**
+- `src/lib/actions/attachments.ts`
+  - `getCaseAttachments(caseId)` → joins profiles for uploader name
+  - `uploadCaseAttachment(caseId, formData)` → validates type+size, uploads to `uploads/cases/{caseId}/`
+  - `deleteCaseAttachment(attachmentId)` → permission check + storage cleanup
+  - `getSessionAttachments(sessionId)` — same pattern
+  - `uploadSessionAttachment(sessionId, formData)` — same pattern
+  - `deleteSessionAttachment(attachmentId)` — same pattern
+- All follow `ActionResult<T>` pattern
+
+**Reusable Component (NEW):**
+- `src/components/attachments/AttachmentsSection.tsx`
+- Handles: list, upload, delete, empty state, loading state
+- File icons by type (📄 PDF, 🖼 image, 📝 Word, 📎 other)
+- Human-readable file sizes
+- Delete button: visible on hover (always visible on mobile)
+- Delete confirmation dialog
+- Files open in new tab (`target="_blank"`)
+
+**UI Integration:**
+- Case detail: "المستندات" tab replaced with "المرفقات" (enabled, no longer placeholder)
+- Session detail: placeholder attachments section replaced with real `AttachmentsSection`
+- Both pages now pass `currentUserId` and `userRole` from server component
+
+**Accepted File Types:** JPEG, PNG, WebP, PDF, DOC, DOCX
+**Max File Size:** 15MB (server-side validated)
+
+**Storage Paths:**
+- `uploads/cases/{case_id}/{timestamp}_{filename}`
+- `uploads/sessions/{session_id}/{timestamp}_{filename}`
+
+**Build Status:** ✅ `npm run build` → Exit code: 0
+**Dependencies:** None added
+
+---
+
+## [2026-05-07] — Bug Fix: Avatar & Logo Display Issues
+
+**Severity:** Low (UI rendering bugs — no schema changes)
+
+**Root Causes Found & Fixed:**
+
+### 1. Topbar — Avatar Not Showing
+- **Root cause:** `Topbar.tsx` يجلب `full_name` فقط من `profiles` — `avatar_url` لم يكن مجلوباً أبداً
+- **Fix:** إضافة `avatar_url` لـ select query + إضافة `Image` component + conditional rendering
+- **File:** `src/components/layout/Topbar.tsx`
+
+### 2. ProfileForm — Lightbox Not Opening on Avatar Click
+- **Root cause:** لم يكن هناك `previewOpen` state ولا lightbox JSX ولا `onClick` على الأفاتار
+- **Fix:** إضافة `previewOpen` state + تغليف الأفاتار بـ `onClick` + إضافة lightbox overlay في نهاية الـ component
+- **File:** `src/app/dashboard/profile/ProfileForm.tsx`
+
+### 3. SettingsClient — Lightbox Not Opening on Logo Click
+- **Root cause:** نفس مشكلة ProfileForm — لم يكن هناك lightbox منفصل للشعار
+- **Fix:** إضافة `logoLightboxOpen` state + `cursor-pointer` + `onClick` على الشعار + lightbox JSX
+- **File:** `src/app/dashboard/settings/SettingsClient.tsx`
+
+**Verification:**
+- `next.config.ts` — `remotePatterns` للـ Supabase storage سليم ✅ (لم يُعدَّل)
+- `npm run build` → Exit code: 0 ✅
+
+---
+
+## [2026-05-07] — صور العملاء وأعضاء الفريق [Member & Client Photos — Phase A]
+
+**Severity:** Low (UI enhancement, no DB migration needed)
+
+**Key Finding:** `clients.avatar_url` already exists in DB — no migration needed. The column was added in a prior migration but wasn't being utilized with upload functionality.
+
+**Server Actions Updated:**
+- `clients.ts`: إضافة `uploadClientPhoto` — upload to `uploads/clients/{clientId}/photo.{ext}`, validates 2MB + image types
+- `team.ts`: توسيع `getTeamMembers` select لتشمل `profiles.avatar_url`
+
+**UI Changes — Team Members List:**
+- `TeamMemberList.tsx`: عرض صورة العضو بدلاً من الحروف الأولى عند توفر `avatar_url`
+- تحديث `MemberRowExt` type لتشمل `avatar_url`
+- Permissions dialog: عرض صورة العضو في header
+
+**UI Changes — Clients List:**
+- `ClientTableList.tsx`: استبدال `<img>` بـ `<Image>` من `next/image`
+
+**UI Changes — Client Detail Page:**
+- `ClientDetailClient.tsx`: إضافة زر كاميرا لرفع الصورة + optimistic preview
+- Lightbox: عرض الصورة بالحجم الكامل عند النقر عليها
+- Upload: التحقق من النوع والحجم (client-side + server-side)
+
+**Storage Paths Used:**
+- `uploads/clients/{clientId}/photo.{ext}` — صور العملاء (جديد)
+- `uploads/avatars/{userId}/avatar.{ext}` — صور الأعضاء (موجود سابقاً)
+
+**Build Status:** ✅ `npm run build` — Exit code: 0
+**Lint Status:** ✅ No new lint errors
+
+**Dependencies:** لا توجد مكتبات جديدة
+
+---
+
+## [2026-05-07] — إعادة بناء صفحة الإعدادات + الملف الشخصي [Settings & Profile Rebuild]
+
+**Severity:** Medium (DB migration + new Storage bucket + UI rebuild)
+
+**Migration Applied:** `20260507_settings_profile_columns.sql`
+- 7 أعمدة جديدة لجدول `offices`: `logo_url`, `specialization`, `license_number`, `address`, `working_days` (jsonb), `working_hours_start`, `working_hours_end`
+- 2 عمودين جديدين لجدول `profiles`: `avatar_url`, `job_title`
+- Storage bucket جديد: `uploads` (public) مع policies لـ authenticated users
+- مجلدات: `uploads/logos/{office_id}`, `uploads/avatars/{user_id}`
+
+**Server Actions Updated:**
+- `settings.ts`: توسيع `updateOfficeSettingsAction` + إضافة `uploadOfficeLogo` + `getActivityLog`
+- `profile.ts`: توسيع `updateProfileAction` + إضافة `uploadAvatar`
+- جميع Actions تتبع `ActionResult<T>` pattern
+
+**Validation Schemas Updated:**
+- `settings.ts`: إضافة `specialization`, `license_number`, `address`, `working_days`, `working_hours_start/end`
+- `profile.ts`: إضافة `job_title`
+
+**UI Changes — Settings Page [REBUILT]:**
+- حذف `SettingsForm.tsx` → استبدال بـ `SettingsClient.tsx`
+- 4 أقسام: هوية المكتب (مع Logo upload) | أوقات العمل | الأمان (سجل النشاط) | الإشعارات
+- Logo upload مع preview دائرية + cache-busting
+- أيام العمل كـ toggle buttons (بدون Checkbox component)
+- سجل نشاط من `audit_logs` (آخر 10 سجلات)
+
+**UI Changes — Profile Page [REBUILT]:**
+- Header مع تدرج لوني + Avatar upload دائري + role badge
+- حقول: الاسم الكامل | البريد الإلكتروني (read-only) | الهاتف | المسمى الوظيفي | الدور
+- Avatar upload مع camera icon overlay
+
+**Types Updated:** `database.ts` — إضافة الأعمدة الجديدة لـ `offices` و `profiles`
+
+**Build Status:** ✅ `npm run build` — Exit code: 0
+
+**Dependencies:** لا توجد مكتبات جديدة
+
+**Future TODOs (مسجلة في الكود):**
+- Active sessions management with device count
+- Geo-location approximation in activity log
+- Official holidays calendar integration
+- Advanced notification preferences
+- Per-member billing logic
+
+---
+
 ## [2026-04-27] — ضبط خطط الاشتراك + تحسين تصميم صفحة الاشتراكات [17+18]
 
 **Severity:** High (Production pricing change + DB migration)

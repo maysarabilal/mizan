@@ -21,7 +21,7 @@ export async function getTeamMembers() {
     .from('office_members')
     .select(`
       *,
-      profiles (full_name, phone)
+      profiles (full_name, phone, avatar_url)
     `)
     .order('created_at', { ascending: true })
   

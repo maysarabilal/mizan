@@ -160,3 +160,51 @@ export async function deleteClientAction(id: string): Promise<ActionResult> {
   revalidatePath('/dashboard/clients')
   return { data: null, error: null }
 }
+
+export async function uploadClientPhoto(clientId: string, formData: FormData): Promise<ActionResult<{ photo_url: string }>> {
+  const subError = await requireActiveSubscription()
+  if (subError) return { data: null, error: subError }
+
+  const file = formData.get('file') as File | null
+  if (!file) return { data: null, error: 'لم يتم اختيار ملف' }
+
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return { data: null, error: 'نوع الملف غير مدعوم. يرجى اختيار صورة (JPEG, PNG, WebP)' }
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    return { data: null, error: 'حجم الملف يتجاوز 2 ميغابايت' }
+  }
+
+  const supabase = await createClient()
+
+  const ext = file.name.split('.').pop() || 'jpg'
+  const filePath = `clients/${clientId}/photo.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('uploads')
+    .upload(filePath, file, { upsert: true, contentType: file.type })
+
+  if (uploadError) {
+    console.error('Error uploading client photo:', uploadError)
+    return { data: null, error: 'فشل في رفع الصورة' }
+  }
+
+  const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath)
+  const photoUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`
+
+  const { error: updateError } = await supabase
+    .from('clients')
+    .update({ avatar_url: photoUrl })
+    .eq('id', clientId)
+
+  if (updateError) {
+    console.error('Error updating client photo_url:', updateError)
+    return { data: null, error: 'فشل في تحديث صورة العميل' }
+  }
+
+  revalidatePath('/dashboard/clients')
+  revalidatePath(`/dashboard/clients/${clientId}`)
+  return { data: { photo_url: photoUrl }, error: null }
+}

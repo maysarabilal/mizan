@@ -52,10 +52,20 @@ async function SessionDetailContent({ params }: SessionDetailPageProps) {
     notFound()
   }
 
+  // Get current user ID and role for attachments permissions
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: member } = await supabase
+    .from('office_members')
+    .select('role')
+    .eq('user_id', user?.id || '')
+    .single()
+
   return (
     <SessionDetailClient
       session={sessionResult.data}
       cases={cases || []}
+      currentUserId={user?.id || ''}
+      userRole={member?.role || ''}
     />
   )
 }

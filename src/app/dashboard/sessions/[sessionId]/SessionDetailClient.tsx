@@ -7,17 +7,17 @@ import { toast } from 'sonner'
 import {
   ArrowRight, Pencil, Trash2, Calendar, Clock, Building2,
   User, FileText, ShieldAlert, DoorOpen, Scale, Phone, Mail,
-  FileUp, FileCheck, FilePlus,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { SessionDialog } from '@/app/dashboard/sessions/SessionDialog'
 import { deleteSessionAction } from '@/lib/actions/sessions'
+import { getSessionAttachments, uploadSessionAttachment, deleteSessionAttachment } from '@/lib/actions/attachments'
+import { AttachmentsSection } from '@/components/attachments/AttachmentsSection'
 import { Database } from '@/types/database'
 
 type CaseRow = Database['public']['Tables']['cases']['Row']
@@ -30,7 +30,7 @@ const statusConfig: Record<string, { label: string; bg: string; text: string }> 
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function SessionDetailClient({ session, cases }: { session: any, cases: CaseRow[] }) {
+export function SessionDetailClient({ session, cases, currentUserId, userRole }: { session: any, cases: CaseRow[], currentUserId: string, userRole: string }) {
   const router = useRouter()
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -227,41 +227,16 @@ export function SessionDetailClient({ session, cases }: { session: any, cases: C
         </p>
       </div>
 
-      {/* Attachments Placeholder */}
-      <div className="flex flex-col gap-3 p-5 bg-white dark:bg-zinc-950 border border-black/8 dark:border-zinc-800 rounded-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[#8B939A]">
-            <FileUp className="h-4 w-4" />
-            <span className="text-sm font-semibold">المرفقات والمستندات</span>
-          </div>
-          <Badge variant="secondary" className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-[10px]">
-            قريباً
-          </Badge>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button
-            disabled
-            className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-sm text-[#8B939A] opacity-60 cursor-not-allowed hover:border-[#C9A84C]/30 transition-colors"
-            title="قريباً — إرفاق مذكرة"
-          >
-            <FileCheck className="h-4 w-4" /> مذكرات
-          </button>
-          <button
-            disabled
-            className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-sm text-[#8B939A] opacity-60 cursor-not-allowed hover:border-[#C9A84C]/30 transition-colors"
-            title="قريباً — إرفاق طلب"
-          >
-            <FilePlus className="h-4 w-4" /> طلبات
-          </button>
-          <button
-            disabled
-            className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-sm text-[#8B939A] opacity-60 cursor-not-allowed hover:border-[#C9A84C]/30 transition-colors"
-            title="قريباً — إرفاق مستند"
-          >
-            <FileUp className="h-4 w-4" /> مستندات
-          </button>
-        </div>
-      </div>
+      {/* Attachments */}
+      <AttachmentsSection
+        entityId={session.id}
+        entityType="session"
+        currentUserId={currentUserId}
+        userRole={userRole}
+        fetchAttachments={getSessionAttachments}
+        uploadAttachment={uploadSessionAttachment}
+        deleteAttachment={deleteSessionAttachment}
+      />
 
       {/* Link to case */}
       {caseData && (

@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import Image from 'next/image'
 import {
   ArrowRight, Edit, Mail, Phone, MapPin, CreditCard,
-  Calendar, User, Briefcase, Trash2, ShieldAlert,
+  Calendar, User, Briefcase, Trash2, ShieldAlert, Camera, Loader2, X,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
@@ -18,7 +19,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { ClientDialog } from '../ClientDialog'
-import { deleteClientAction } from '@/lib/actions/clients'
+import { deleteClientAction, uploadClientPhoto } from '@/lib/actions/clients'
 import { Database } from '@/types/database'
 
 type Client = Database['public']['Tables']['clients']['Row']
@@ -29,6 +30,10 @@ export function ClientDetailClient({ client, cases }: { client: Client, cases: a
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(client.avatar_url)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -41,6 +46,44 @@ export function ClientDetailClient({ client, cases }: { client: Client, cases: a
       router.push('/dashboard/clients')
     }
     setDeleteOpen(false)
+  }
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error('نوع الملف غير مدعوم. يرجى اختيار صورة (JPEG, PNG, WebP)')
+      return
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('حجم الملف يتجاوز 2 ميغابايت')
+      return
+    }
+
+    // Optimistic preview
+    const reader = new FileReader()
+    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+
+    setIsUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const { data, error } = await uploadClientPhoto(client.id, formData)
+    setIsUploading(false)
+
+    if (error) {
+      toast.error(error)
+      setPhotoPreview(client.avatar_url)
+      return
+    }
+
+    if (data) setPhotoPreview(data.photo_url)
+    toast.success('تم رفع صورة العميل بنجاح')
+    router.refresh()
   }
 
   const initials = client.name
@@ -95,13 +138,37 @@ export function ClientDetailClient({ client, cases }: { client: Client, cases: a
             </button>
           </div>
           <div className="px-6 py-8 flex flex-col items-center gap-5">
-            {/* Avatar */}
-            <div className="w-[88px] h-[88px] rounded-full bg-[#F0EAD6] flex items-center justify-center border-2 border-[#C9A84C]/20">
-              {client.avatar_url ? (
-                <img src={client.avatar_url} alt={client.name} className="w-[88px] h-[88px] rounded-full object-cover" />
-              ) : (
-                <span className="text-[28px] font-bold text-[#3B3A33]">{initials}</span>
-              )}
+            {/* Avatar with upload */}
+            <div className="relative group">
+              <div
+                className="w-[88px] h-[88px] rounded-full bg-[#F0EAD6] flex items-center justify-center border-2 border-[#C9A84C]/20 overflow-hidden cursor-pointer"
+                onClick={() => photoPreview && setLightboxOpen(true)}
+              >
+                {photoPreview ? (
+                  <Image src={photoPreview} alt={client.name} width={88} height={88} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[28px] font-bold text-[#3B3A33]">{initials}</span>
+                )}
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 left-0 w-7 h-7 rounded-full bg-[#C9A84C] flex items-center justify-center shadow-md hover:bg-[#b8973e] transition-colors border-2 border-white"
+              >
+                <Camera className="h-3.5 w-3.5 text-white" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <span className="text-[20px] font-bold text-[#0F1724]">{client.name}</span>
@@ -301,6 +368,30 @@ export function ClientDetailClient({ client, cases }: { client: Client, cases: a
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Photo Lightbox */}
+      {lightboxOpen && photoPreview && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            className="absolute top-6 left-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+            onClick={() => setLightboxOpen(false)}
+          >
+            <X className="h-5 w-5 text-white" />
+          </button>
+          <div className="relative max-w-[500px] max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
+            <Image
+              src={photoPreview}
+              alt={client.name}
+              width={500}
+              height={500}
+              className="rounded-2xl object-contain max-h-[80vh] w-auto"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

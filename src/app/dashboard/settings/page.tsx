@@ -1,5 +1,5 @@
-import { getOfficeConfig } from '@/lib/actions/settings'
-import { SettingsForm } from './SettingsForm'
+import { getOfficeConfig, getActivityLog } from '@/lib/actions/settings'
+import { SettingsClient } from './SettingsClient'
 import { AlertCircle } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -14,9 +14,12 @@ export default async function SettingsPage() {
     redirect('/dashboard')
   }
 
-  const { data: office, error } = await getOfficeConfig()
+  const [officeRes, activityRes] = await Promise.all([
+    getOfficeConfig(),
+    getActivityLog()
+  ])
 
-  if (error || !office) {
+  if (officeRes.error || !officeRes.data) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center text-red-500 gap-4 border rounded-xl bg-red-50 dark:bg-red-950/20">
         <AlertCircle className="h-10 w-10" />
@@ -27,17 +30,10 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-5xl">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-primary">إعدادات النظام والمكتب</h1>
-        <p className="text-muted-foreground text-sm">تخصيص البيانات العامة للمكتب، تنبيهات المهام والجلسات التلقائية.</p>
-      </div>
-
-      <div className="bg-white dark:bg-zinc-950 rounded-xl border p-6">
-        {/* We explicitly cast settings due to JSONB flexibility */}
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <SettingsForm office={{ name: office.name, settings: office.settings as any }} />
-      </div>
-    </div>
+    <SettingsClient
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      office={officeRes.data as any}
+      activityLogs={activityRes.data || []}
+    />
   )
 }

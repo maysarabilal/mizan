@@ -1,10 +1,10 @@
 # Database Schema
 
-Source of truth: `supabase/migrations/` (13 migration files).
+Source of truth: `supabase/migrations/` (15 migration files).
 
 > **Warning:** `src/types/database.ts` is manually maintained and often stale. Always verify against migrations.
 
-## Tables (14)
+## Tables (16)
 
 ### `profiles`
 Extends `auth.users`. One row per registered user.
@@ -15,6 +15,8 @@ Extends `auth.users`. One row per registered user.
 | `full_name` | text | Required |
 | `phone` | text | Nullable |
 | `is_admin` | boolean | Platform admin flag (default false) |
+| `avatar_url` | text | Nullable — URL to avatar in Storage |
+| `job_title` | text | Nullable — e.g. "محامي أول" |
 | `created_at` | timestamptz | Auto |
 | `updated_at` | timestamptz | Auto via trigger |
 
@@ -27,6 +29,13 @@ Tenant root.
 | `name` | text | Required |
 | `settings` | jsonb | `{session_reminders, task_completed, subscription_updates}` |
 | `is_active` | boolean | Admin can suspend |
+| `logo_url` | text | Nullable — URL to logo in Storage |
+| `specialization` | text | Nullable — e.g. `criminal`, `real_estate`, `family` |
+| `license_number` | text | Nullable — Professional license ID |
+| `address` | text | Nullable — Office address |
+| `working_days` | jsonb | Default `["sunday".."thursday"]` |
+| `working_hours_start` | text | Default `"08:00"` |
+| `working_hours_end` | text | Default `"16:00"` |
 | `created_at` / `updated_at` | timestamptz | Auto |
 
 ### `office_members`
@@ -222,6 +231,57 @@ Exceptions:
 | `billing_cycle` | Exists in DB (migration), missing from `database.ts` |
 | `slug` on plans | Added in migration `20260331000000` |
 | `has_permission` RPC | Added in later migration, not in `database.ts` types |
+
+### `case_attachments`
+Files attached to cases.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | Auto-generated |
+| `case_id` | uuid | FK → `cases(id)` ON DELETE CASCADE |
+| `office_id` | uuid | FK → `offices(id)` ON DELETE CASCADE |
+| `uploaded_by` | uuid | FK → `profiles(id)` ON DELETE CASCADE |
+| `file_name` | text | Original filename |
+| `file_url` | text | Public URL in Storage |
+| `file_type` | text | MIME type |
+| `file_size` | integer | Size in bytes |
+| `created_at` | timestamptz | Auto |
+
+**RLS:** SELECT/INSERT for office members. DELETE for uploader OR admin/owner.
+
+### `session_attachments`
+Files attached to sessions.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | Auto-generated |
+| `session_id` | uuid | FK → `sessions(id)` ON DELETE CASCADE |
+| `office_id` | uuid | FK → `offices(id)` ON DELETE CASCADE |
+| `uploaded_by` | uuid | FK → `profiles(id)` ON DELETE CASCADE |
+| `file_name` | text | Original filename |
+| `file_url` | text | Public URL in Storage |
+| `file_type` | text | MIME type |
+| `file_size` | integer | Size in bytes |
+| `created_at` | timestamptz | Auto |
+
+**RLS:** SELECT/INSERT for office members. DELETE for uploader OR admin/owner.
+
+## Storage Buckets
+
+### `uploads` (public)
+
+| Path Pattern | Usage | Max Size |
+|---|---|---|
+| `logos/{office_id}/logo.{ext}` | Office logo | 2MB |
+| `avatars/{user_id}/avatar.{ext}` | User avatar | 2MB |
+| `clients/{client_id}/photo.{ext}` | Client photo | 2MB |
+| `cases/{case_id}/{timestamp}_{filename}` | Case attachments | 15MB |
+| `sessions/{session_id}/{timestamp}_{filename}` | Session attachments | 15MB |
+
+**RLS Policies:**
+- `INSERT` → authenticated users (bucket = 'uploads')
+- `UPDATE` → authenticated users (bucket = 'uploads')
+- `SELECT` → public read
 
 ## Regenerate Types
 
