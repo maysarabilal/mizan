@@ -40,17 +40,40 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# archive (reference prompts, backups)
-/_archive/
-mizan-builder-prompt-no-n8n.md
-mizan-surgeon-prompt-v2.md
+# --- MIZAN CLEANUP: Unnecessary files for production ---
 
-# design assets and mockups (not source code)
+# Folders
 /landing-page/
 /phone-ui/
 /UI/
-image_50.png
+/_archive/
+/temp_mcp/
+/.agent/
+/.qwen/
+/.gemini/
 
-# AI agent working directories
-.agent/
-.gemini/
+# Documentation & AI Logs (Keep only README.md)
+AGENTS.md
+API_CONTRACT.md
+ARCHITECTURE.md
+CLAUDE.md
+CODE_QUALITY.md
+DB_SCHEMA.md
+DEVELOPMENT_LOG.md
+FEATURE_AUDIT_REPORT.md
+FUTURE_SUGGESTIONS.md
+MIZAN_ACTION_PLAN.md
+PRODUCT_RULES.md
+QA_MASTER_PLAN.md
+TESTING.md
+TESTING_SCENARIOS.md
+TROUBLESHOOTING.md
+UI_Implementation_Protocol.md
+mizan_audit_prompt.md
+test-output.md
+users.md
+
+# Assets and Temp Files
+/*.txt
+/image_50.png
+/law-book-law-svgrepo-com.svg
