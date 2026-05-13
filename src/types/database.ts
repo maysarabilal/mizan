@@ -9,6 +9,51 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          office_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          office_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          office_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
       profiles: {
         Row: {
           id: string
@@ -157,6 +202,114 @@ export type Database = {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         Relationships: any[]
       }
+      case_fees: {
+        Row: {
+          id: string
+          case_id: string
+          office_id: string
+          client_id: string | null
+          total_amount: number
+          notes: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          case_id: string
+          office_id: string
+          client_id?: string | null
+          total_amount: number
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          case_id?: string
+          office_id?: string
+          client_id?: string | null
+          total_amount?: number
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
+      }
+      case_payments: {
+        Row: {
+          id: string
+          case_fee_id: string
+          office_id: string
+          amount: number
+          payment_date: string
+          payment_method: string
+          notes: string | null
+          recorded_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          case_fee_id: string
+          office_id: string
+          amount: number
+          payment_date: string
+          payment_method: string
+          notes?: string | null
+          recorded_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          case_fee_id?: string
+          office_id?: string
+          amount?: number
+          payment_date?: string
+          payment_method?: string
+          notes?: string | null
+          recorded_by?: string | null
+          created_at?: string
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
+      }
+      case_expenses: {
+        Row: {
+          id: string
+          case_id: string
+          office_id: string
+          amount: number
+          expense_date: string
+          description: string
+          recorded_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          case_id: string
+          office_id: string
+          amount: number
+          expense_date: string
+          description: string
+          recorded_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          case_id?: string
+          office_id?: string
+          amount?: number
+          expense_date?: string
+          description?: string
+          recorded_by?: string | null
+          created_at?: string
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
+      }
       office_members: {
         Row: {
           id: string
@@ -166,6 +319,7 @@ export type Database = {
           is_active: boolean
           permissions: Record<string, boolean>
           disabled_by_admin: boolean
+          can_manage_fees: boolean
           created_at: string
           updated_at: string
         }
@@ -177,6 +331,7 @@ export type Database = {
           is_active?: boolean
           permissions?: Record<string, boolean>
           disabled_by_admin?: boolean
+          can_manage_fees?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -188,6 +343,7 @@ export type Database = {
           is_active?: boolean
           permissions?: Record<string, boolean>
           disabled_by_admin?: boolean
+          can_manage_fees?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -349,6 +505,7 @@ export type Database = {
           litigation_degree: string | null
           assigned_to: string | null
           notes: string | null
+          opposing_party: string | null
           created_at: string
           updated_at: string
         }
@@ -364,6 +521,7 @@ export type Database = {
           litigation_degree?: string | null
           assigned_to?: string | null
           notes?: string | null
+          opposing_party?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -379,6 +537,7 @@ export type Database = {
           litigation_degree?: string | null
           assigned_to?: string | null
           notes?: string | null
+          opposing_party?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -442,6 +601,7 @@ export type Database = {
           due_date: string | null
           assigned_to: string | null
           case_id: string | null
+          session_id: string | null
           created_by: string
           created_at: string
           updated_at: string
@@ -456,6 +616,7 @@ export type Database = {
           due_date?: string | null
           assigned_to?: string | null
           case_id?: string | null
+          session_id?: string | null
           created_by: string
           created_at?: string
           updated_at?: string
@@ -470,6 +631,7 @@ export type Database = {
           due_date?: string | null
           assigned_to?: string | null
           case_id?: string | null
+          session_id?: string | null
           created_by?: string
           created_at?: string
           updated_at?: string
@@ -656,6 +818,52 @@ export type Database = {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         Relationships: any[]
       }
+      beta_feedback: {
+        Row: {
+          id: string
+          ui_rating: number | null
+          features_rating: number | null
+          pricing_rating: number | null
+          office_size: string | null
+          current_tool: string | null
+          most_needed_feature: string | null
+          missing_feature: string | null
+          general_notes: string | null
+          contact_info: string | null
+          user_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          ui_rating?: number | null
+          features_rating?: number | null
+          pricing_rating?: number | null
+          office_size?: string | null
+          current_tool?: string | null
+          most_needed_feature?: string | null
+          missing_feature?: string | null
+          general_notes?: string | null
+          contact_info?: string | null
+          user_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          ui_rating?: number | null
+          features_rating?: number | null
+          pricing_rating?: number | null
+          office_size?: string | null
+          current_tool?: string | null
+          most_needed_feature?: string | null
+          missing_feature?: string | null
+          general_notes?: string | null
+          contact_info?: string | null
+          user_id?: string | null
+          created_at?: string
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Relationships: any[]
+      }
     }
     Views: {
       [_ in never]: never
@@ -728,6 +936,12 @@ export type Database = {
           title: string
           subtitle: string | null
         }[]
+      }
+      get_office_financial_summary: {
+        Args: {
+          p_office_id: string
+        }
+        Returns: Json
       }
     }
     Enums: {

@@ -37,9 +37,10 @@ const WEEKDAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأ
 interface SessionCalendarViewProps {
   sessions: SessionRowExt[]
   cases: CaseRow[]
+  workingDays: string[]
 }
 
-export function SessionCalendarView({ sessions, cases }: SessionCalendarViewProps) {
+export function SessionCalendarView({ sessions, cases, workingDays }: SessionCalendarViewProps) {
   const router = useRouter()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -290,6 +291,7 @@ export function SessionCalendarView({ sessions, cases }: SessionCalendarViewProp
         onOpenChange={(open) => { if (!open) setEditingSession(null) }}
         sessionItem={editingSession}
         cases={cases}
+        workingDays={workingDays}
       />
     </>
   )

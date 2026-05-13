@@ -5,7 +5,6 @@ import { requireActiveSubscription } from '@/lib/actions/subscription'
 import { getCases } from '@/lib/actions/cases'
 import { SessionDetailClient } from './SessionDetailClient'
 
-export const dynamic = 'force-dynamic'
 
 interface SessionDetailPageProps {
   params: Promise<{ sessionId: string }>

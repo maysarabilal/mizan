@@ -1,7 +1,10 @@
+import { createClient } from '@/lib/supabase/server'
 import { getNotifications } from '@/lib/actions/notifications'
 import { NotificationsList } from '@/components/notifications/NotificationsList'
 
 export default async function NotificationsPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   const { data: notifications } = await getNotifications(100)
 
   return (
@@ -11,7 +14,10 @@ export default async function NotificationsPage() {
         <p className="text-muted-foreground text-sm">متابعة التحديثات الهامة حول الجلسات، المهام والعملاء</p>
       </div>
 
-      <NotificationsList initialData={notifications || []} />
+      <NotificationsList
+        initialData={notifications || []}
+        userId={user?.id ?? ''}
+      />
     </div>
   )
 }

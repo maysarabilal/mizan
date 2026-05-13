@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { FileCheck, FilePlus, FileUp } from 'lucide-react'
 
 import { caseSchema } from '@/lib/validations/cases'
-import { createCaseAction, updateCaseAction } from '@/lib/actions/cases'
+import { createCaseAction, updateCaseAction, checkConflictOfInterest } from '@/lib/actions/cases'
 import { Database } from '@/types/database'
 
 import { Button } from '@/components/ui/button'
@@ -61,6 +61,7 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
       litigation_degree: caseItem?.litigation_degree || '',
       assigned_to: caseItem?.assigned_to || '',
       notes: caseItem?.notes || '',
+      opposing_party: caseItem?.opposing_party || '',
     },
   })
 
@@ -75,8 +76,30 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
       litigation_degree: caseItem?.litigation_degree || '',
       assigned_to: caseItem?.assigned_to || '',
       notes: caseItem?.notes || '',
+      opposing_party: caseItem?.opposing_party || '',
     })
   }, [caseItem, form])
+
+  const handleOpposingPartyBlur = async () => {
+    const opposingParty = form.getValues('opposing_party')
+    if (!opposingParty || opposingParty.trim().length < 2) return
+
+    const officeId = caseItem?.office_id || clients[0]?.office_id
+    if (!officeId) return
+
+    const { data, error } = await checkConflictOfInterest(opposingParty, officeId)
+    if (error) {
+      console.error(error)
+      return
+    }
+
+    if (data?.hasConflict && data.matchedClient) {
+      toast.warning(
+        `تنبيه تضارب مصالح: اسم الخصم مشابه لاسم عميل مسجل بالمكتب (${data.matchedClient.name})`,
+        { duration: 6000 }
+      )
+    }
+  }
 
   async function onSubmit(values: z.infer<typeof caseSchema>) {
     setIsSubmitting(true)
@@ -180,6 +203,43 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
                   )}
                 />
               </div>
+
+              {/* Opposing Party */}
+              <FormField
+                control={form.control}
+                name="opposing_party"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">الخصم (الطرف الآخر)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="اسم الخصم..." 
+                        className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700" 
+                        disabled={isSubmitting} 
+                        {...field} 
+                        value={field.value || ''}
+                        onBlur={(e) => {
+                          field.onBlur()
+                          const value = e.target.value.trim()
+                          if (value.length >= 2) {
+                            const match = clients.find(client =>
+                              client.name.toLowerCase().includes(value.toLowerCase()) ||
+                              value.toLowerCase().includes(client.name.toLowerCase())
+                            )
+                            if (match) {
+                              toast.warning(
+                                `⚠️ تنبيه تضارب مصالح: "${match.name}" مسجل كعميل في المكتب. يرجى مراجعة المحامي المسؤول.`,
+                                { duration: 6000 }
+                              )
+                            }
+                          }
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {/* Divider */}
               <div className="border-t border-dashed border-black/8 dark:border-zinc-800" />
@@ -331,40 +391,11 @@ export function CaseDialog({ open, onOpenChange, caseItem, clients, teamMembers 
               {/* Divider */}
               <div className="border-t border-dashed border-black/8 dark:border-zinc-800" />
 
-              {/* Attachments — UI Placeholder */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">المرفقات والمستندات</span>
-                  <Badge variant="secondary" className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-[10px]">
-                    قريباً
-                  </Badge>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled
-                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
-                    title="قريباً — إرفاق عقد أو توكيل"
-                  >
-                    <FileCheck className="h-3.5 w-3.5" /> إرفاق عقد / توكيل
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
-                    title="قريباً — إرفاق مستند قضائي"
-                  >
-                    <FilePlus className="h-3.5 w-3.5" /> إرفاق مستند قضائي
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
-                    title="قريباً — إرفاق ملف"
-                  >
-                    <FileUp className="h-3.5 w-3.5" /> إرفاق ملف
-                  </button>
-                </div>
+              {/* Attachments — Info Note */}
+              <div className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/40 px-4 py-3">
+                <span className="text-sm text-muted-foreground">
+                  📎 لرفع المرفقات والمستندات، توجّه إلى صفحة تفاصيل القضية
+                </span>
               </div>
             </form>
           </Form>

@@ -46,6 +46,90 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ─── MIZAN LANDING PAGE BRAND COLORS ─── */
+  --color-l-gold: #B8922A;
+  --color-l-gold-light: #D4A94D;
+  --color-l-gold-soft: rgba(184, 146, 42, 0.15);
+  --color-l-gold-dark: #96721A;
+  --color-l-navy: #0D1B2A;
+  --color-l-navy-light: #142438;
+  --color-l-navy-dark: #080F18;
+  --color-l-parchment: #F4EFE4;
+  --color-l-parchment-dark: #E8E2D4;
+  --color-l-charcoal: #1A1A1A;
+  --color-l-charcoal-light: #222222;
+  --color-l-crimson: #7B1D1D;
+  --color-l-text: #E8E4D9;
+  --color-l-muted: #9A9180;
+
+  /* Landing page shadows */
+  --shadow-gold: 0 8px 32px rgba(184, 146, 42, 0.12);
+  --shadow-gold-lg: 0 0 40px rgba(184, 146, 42, 0.2);
+  --shadow-mockup: 0 40px 80px rgba(0, 0, 0, 0.3);
+
+  /* Landing page fonts */
+  --font-cormorant: var(--font-cormorant-garamond), serif;
+  --font-cairo: var(--font-cairo), sans-serif;
+
+  /* Landing page animations */
+  --animate-bounce-slow: bounce-slow 2s ease infinite;
+}
+
+/* ─── LANDING PAGE KEYFRAMES ─── */
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* ─── LANDING PAGE UTILITY CLASSES ─── */
+@layer components {
+  /* Gold gradient text */
+  .text-gradient-l-gold {
+    background: linear-gradient(135deg, var(--color-l-gold), var(--color-l-gold-dark));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Gold gradient background */
+  .bg-gradient-l-gold {
+    background: linear-gradient(135deg, var(--color-l-gold), var(--color-l-gold-dark));
+  }
+
+  /* Navy gradient background */
+  .bg-gradient-l-navy {
+    background: linear-gradient(135deg, var(--color-l-navy) 0%, var(--color-l-navy-light) 50%, var(--color-l-navy) 100%);
+  }
+
+  /* Gold featured ring for pricing */
+  .ring-l-gold-featured {
+    box-shadow: 0 0 0 2px var(--color-l-gold), 0 0 40px rgba(184, 146, 42, 0.2);
+  }
+
+  /* Shadow utilities */
+  .shadow-l-gold {
+    box-shadow: 0 8px 32px rgba(184, 146, 42, 0.12);
+  }
+  .shadow-l-gold-lg {
+    box-shadow: 0 0 40px rgba(184, 146, 42, 0.2);
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(184, 146, 42, 0.1); }
+    50% { box-shadow: 0 0 40px rgba(184, 146, 42, 0.25); }
+  }
+  .animate-glow-pulse {
+    animation: glow-pulse 3s infinite ease-in-out;
+  }
+  .shadow-l-mockup {
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Animate bounce slow */
+  .animate-bounce-slow {
+    animation: bounce-slow 2s ease infinite;
+  }
 }
 
 :root {
@@ -144,6 +228,9 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  button, [role="button"], a {
+    @apply cursor-pointer;
   }
   html {
     @apply font-sans;

@@ -7,7 +7,7 @@ import { ar } from 'date-fns/locale'
 import { 
   ChevronRight, Mail, Phone, Calendar, Shield, 
   Settings2, Activity, UserCircle, CheckCircle2, XCircle,
-  Briefcase, Scale
+  Briefcase, Scale, DollarSign
 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { PERMISSION_LABELS, type PermissionKey } from '@/lib/validations/team'
@@ -35,7 +35,7 @@ const ROLE_CONFIG: Record<string, { label: string; bg: string; text: string; bor
 }
 
 // ── Permissions Dialog Wrapper (Local for now to avoid circular deps) ──────────
-import { updateMemberPermissionsAction } from '@/lib/actions/team'
+import { updateMemberPermissionsAction, updateMemberCanManageFeesAction } from '@/lib/actions/team'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -55,6 +55,22 @@ export function MemberDetailClient({ member }: { member: MemberRowExt }) {
   // ── Permissions Edit Logic ──
   const [perms, setPerms] = useState<Record<string, boolean>>(permissions)
   const [isSaving, setIsSaving] = useState(false)
+  const [canManageFees, setCanManageFees] = useState(member.can_manage_fees ?? false)
+  const [isSavingFees, setIsSavingFees] = useState(false)
+
+  const handleToggleCanManageFees = async (value: boolean) => {
+    setIsSavingFees(true)
+    setCanManageFees(value)
+    const { error } = await updateMemberCanManageFeesAction(member.id, value)
+    setIsSavingFees(false)
+    if (error) {
+      toast.error(error)
+      setCanManageFees(!value)
+      return
+    }
+    toast.success(value ? 'تم تفعيل صلاحية إدارة الأتعاب' : 'تم إلغاء صلاحية إدارة الأتعاب')
+    router.refresh()
+  }
 
   const handleSavePerms = async () => {
     setIsSaving(true)
@@ -295,7 +311,36 @@ export function MemberDetailClient({ member }: { member: MemberRowExt }) {
                       )
                     })}
                  </div>
-               )}
+                )}
+
+                {/* can_manage_fees toggle — separate from permissions JSONB */}
+                {member.role !== 'owner' && (
+                  <div className="mt-6 pt-5 border-t border-black/[0.06]">
+                    <h4 className="text-[14px] font-bold text-[#0F1724] mb-3 flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-[#C9A84C]" />
+                      صلاحيات مالية
+                    </h4>
+                    <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                      canManageFees
+                        ? 'bg-emerald-50/30 border-emerald-100'
+                        : 'bg-[#F9FAFB] border-black/[0.05]'
+                    }`}>
+                      <div className="flex flex-col">
+                        <span className={`text-[13px] font-medium ${canManageFees ? 'text-[#0F1724]' : 'text-[#9AA3B2]'}`}>
+                          إدارة الأتعاب والفواتير
+                        </span>
+                        <span className="text-[11px] text-[#9AA3B2]">
+                          تسجيل الدفعات والمصاريف وتحديد الأتعاب
+                        </span>
+                      </div>
+                      <Switch
+                        checked={canManageFees}
+                        onCheckedChange={handleToggleCanManageFees}
+                        disabled={isSavingFees}
+                      />
+                    </div>
+                  </div>
+                )}
              </CardContent>
           </Card>
 

@@ -111,7 +111,9 @@ export function SessionFilters({ sessionTypes, courts }: SessionFiltersProps) {
             onValueChange={(val) => updateParam('status', (!val || val === '__clear__') ? null : val)}
           >
             <SelectTrigger className="w-full h-10 bg-white dark:bg-zinc-950 border-black/8 dark:border-zinc-700 rounded-md text-sm">
-              <SelectValue placeholder="الحالة" />
+              <SelectValue>
+                {currentStatus ? statusMap[currentStatus] : "الحالة"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {currentStatus && <SelectItem value="__clear__">← الكل</SelectItem>}

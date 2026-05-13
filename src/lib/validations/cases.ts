@@ -10,4 +10,5 @@ export const caseSchema = z.object({
   litigation_degree: z.string().optional().nullable(),
   assigned_to: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  opposing_party: z.string().optional().nullable(),
 })

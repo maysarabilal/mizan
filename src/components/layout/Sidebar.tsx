@@ -18,6 +18,7 @@ import {
   ScrollText,
   Menu,
   HelpCircle,
+  DollarSign,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -45,6 +46,7 @@ const ALL_ROUTES = [
   { label: 'الفريق', icon: UserPlus, href: '/dashboard/team' },
   { label: 'الإشعارات', icon: Bell, href: '/dashboard/notifications' },
   { label: 'سجلات الرقابة', icon: ScrollText, href: '/dashboard/logs' },
+  { label: 'التقرير المالي', icon: DollarSign, href: '/dashboard/finances', isBottom: true },
   { label: 'الاشتراك والباقات', icon: CreditCard, href: '/dashboard/subscription', isBottom: true },
   { label: 'الإعدادات', icon: Settings, href: '/dashboard/settings', isBottom: true },
 ]
@@ -53,6 +55,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const [userRole, setUserRole] = useState<UserRole>(null)
   const [userPerms, setUserPerms] = useState<Record<string, boolean>>({})
+  const [canManageFees, setCanManageFees] = useState(false)
   const [userName, setUserName] = useState<string>('')
   const [isCollapsed, setIsCollapsed] = useState(false)
 
@@ -64,14 +67,15 @@ export function Sidebar() {
 
       const [profileRes, memberRes] = await Promise.all([
         supabase.from('profiles').select('full_name').eq('id', user.id).single(),
-        supabase.from('office_members').select('role, permissions').eq('user_id', user.id).eq('is_active', true).single(),
+        supabase.from('office_members').select('role, permissions, can_manage_fees').eq('user_id', user.id).eq('is_active', true).single(),
       ])
 
       if (profileRes.data?.full_name) setUserName(profileRes.data.full_name)
-      
+
       if (memberRes.data) {
         setUserRole(memberRes.data.role as UserRole)
         setUserPerms((memberRes.data.permissions as Record<string, boolean>) || {})
+        setCanManageFees(!!memberRes.data.can_manage_fees)
       }
     }
     fetchUserData()
@@ -81,10 +85,15 @@ export function Sidebar() {
     // Owner sees everything
     if (userRole === 'owner') return true
 
+    // Special case for finances
+    if (route.href === '/dashboard/finances') {
+      return userRole === 'admin' || canManageFees
+    }
+
     // Check specific permission for the route
     const requiredPerm = ROUTE_PERMISSIONS[route.href]
     if (!requiredPerm) return true
-    
+
     return userPerms[requiredPerm] === true
   })
 
@@ -101,23 +110,32 @@ export function Sidebar() {
 
   return (
     <div className={cn("flex flex-col h-full bg-[#1a2744] text-white/80 transition-all duration-300", isCollapsed ? "w-20" : "w-64")}>
-      <div className={cn("flex h-16 items-center bg-[#1a2744]/90 backdrop-blur-sm sticky top-0 z-10 transition-colors", isCollapsed ? "justify-center" : "justify-between px-6")}>
-        {!isCollapsed && (
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <Image src="/logo.svg" alt="Mizan Logo" width={32} height={32} className="h-8 w-8 shrink-0 object-contain" />
-            <span className="font-bold text-xl shrink-0 text-white">ميزان</span>
-          </Link>
-        )}
+      <div className={cn("flex flex-col items-center bg-[#1a2744]/90 backdrop-blur-sm sticky top-0 z-10 transition-all duration-300", isCollapsed ? "py-4" : "pt-6 pb-2")}>
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)} 
-          className={cn("text-white/60 hover:text-white transition-colors shrink-0", isCollapsed ? "p-2 hover:bg-[#243356] rounded-lg" : "")}
+          className={cn(
+            "text-white/40 hover:text-white transition-all duration-200 shrink-0 absolute top-4 left-4 p-1.5 hover:bg-white/5 rounded-lg",
+            isCollapsed && "static"
+          )}
           title={isCollapsed ? "توسيع القائمة" : "طي القائمة"}
         >
-          <Menu className="h-6 w-6" />
+          <Menu className="h-5 w-5" />
         </button>
+
+        {!isCollapsed && (
+          <Link href="/dashboard" className="group/logo">
+            <Image 
+              src="/logo.png" 
+              alt="Mizan Logo" 
+              width={256} 
+              height={256} 
+              className="h-32 w-32 shrink-0 object-contain drop-shadow-2xl transition-transform duration-300 group-hover/logo:scale-105" 
+            />
+          </Link>
+        )}
       </div>
-      
-      <div className="flex-1 py-6 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-[#243356]">
+
+      <div className="flex-1 py-2 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-[#243356]">
         <nav className="flex flex-col gap-1.5 px-3">
           {topRoutes.map((route) => {
             const isActive = pathname === route.href || (pathname.startsWith(`${route.href}/`) && route.href !== '/dashboard')
@@ -128,9 +146,9 @@ export function Sidebar() {
                 title={isCollapsed ? route.label : undefined}
                 className={cn(
                   "flex items-center rounded-xl py-3 transition-all duration-200 group",
-                  isCollapsed ? "justify-center px-0" : "gap-3 px-4 text-sm",
-                  isActive 
-                    ? "bg-[#243356] text-white border-l-2 border-[#c9a84c] rounded-none rounded-r-xl font-medium" 
+                  isCollapsed ? "justify-center px-0" : "gap-3 px-4 text-base",
+                  isActive
+                    ? "bg-[#243356] text-white border-l-2 border-[#c9a84c] rounded-none rounded-r-xl font-medium"
                     : "text-white/80 hover:bg-[#243356]/50 hover:text-white"
                 )}
               >
@@ -155,9 +173,9 @@ export function Sidebar() {
                 title={isCollapsed ? route.label : undefined}
                 className={cn(
                   "flex items-center rounded-xl py-3 transition-all duration-200 group",
-                  isCollapsed ? "justify-center px-0" : "gap-3 px-4 text-sm",
-                  isActive 
-                    ? "bg-[#243356] text-white border-l-2 border-[#c9a84c] rounded-none rounded-r-xl font-medium" 
+                  isCollapsed ? "justify-center px-0" : "gap-3 px-4 text-base",
+                  isActive
+                    ? "bg-[#243356] text-white border-l-2 border-[#c9a84c] rounded-none rounded-r-xl font-medium"
                     : "text-white/80 hover:bg-[#243356]/50 hover:text-white"
                 )}
               >
@@ -170,7 +188,7 @@ export function Sidebar() {
               </Link>
             )
           })}
-          
+
           <div className={cn("mb-4 mt-2", isCollapsed ? "mx-auto" : "mx-3")}>
             <div className={cn("bg-[#243356] rounded-xl flex items-center cursor-pointer hover:bg-[#2d3f6b] transition-colors", isCollapsed ? "p-2 justify-center" : "p-4 gap-3")}>
               <div className="bg-[#c9a84c]/20 rounded-lg p-2 shrink-0">

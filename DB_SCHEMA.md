@@ -1,10 +1,10 @@
 # Database Schema
 
-Source of truth: `supabase/migrations/` (15 migration files).
+Source of truth: `supabase/migrations/` (17 migration files).
 
 > **Warning:** `src/types/database.ts` is manually maintained and often stale. Always verify against migrations.
 
-## Tables (16)
+## Tables (19)
 
 ### `profiles`
 Extends `auth.users`. One row per registered user.
@@ -48,6 +48,8 @@ Tenant root.
 | `role` | text | `owner`, `admin`, `lawyer`, `secretary`, `trainee` |
 | `is_active` | boolean | Soft deactivation |
 | `permissions` | jsonb | `Record<string, boolean>` |
+| `disabled_by_admin` | boolean | Admin suspension flag (default false) |
+| `can_manage_fees` | boolean | Financial management permission (default false) |
 | UNIQUE | | `(office_id, user_id)` |
 
 ### `subscription_plans`
@@ -204,11 +206,12 @@ Tracks offices that have exceeded their member limit, enforcing a 7-day grace pe
 | `is_platform_admin()` | Checks `profiles.is_admin` |
 | `has_permission(p_perm text)` | Checks specific JSONB permission (added in later migration) |
 | `redeem_invitation(p_user_id, p_invite_code)` | Atomic invitation redemption |
+| `get_office_financial_summary(p_office_id)` | Returns JSON `{total_fees, total_paid}` for dashboard KPIs |
 | `trigger_set_updated_at()` | Auto `updated_at` trigger |
 
 ## RLS Summary
 
-All 14 tables have RLS enabled. General pattern:
+All 19 tables have RLS enabled. General pattern:
 
 - **SELECT**: `office_id = current_office_id() OR is_platform_admin()`
 - **INSERT**: `office_id = current_office_id()`
@@ -265,6 +268,55 @@ Files attached to sessions.
 | `created_at` | timestamptz | Auto |
 
 **RLS:** SELECT/INSERT for office members. DELETE for uploader OR admin/owner.
+
+### `case_fees`
+Fee agreement per case (one per case via UNIQUE constraint on `case_id`).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | Auto-generated |
+| `case_id` | uuid | FK → `cases(id)` ON DELETE CASCADE, UNIQUE |
+| `office_id` | uuid | FK → `offices(id)` ON DELETE CASCADE |
+| `client_id` | uuid | FK → `clients(id)` ON DELETE SET NULL, Nullable |
+| `total_amount` | numeric(10,2) | Default 0 |
+| `notes` | text | Nullable |
+| `created_by` | uuid | FK → `profiles(id)` ON DELETE SET NULL |
+| `created_at` / `updated_at` | timestamptz | Auto |
+
+**RLS:** SELECT for all office members. INSERT/UPDATE for owner/admin or `can_manage_fees = true`. DELETE for owner/admin only.
+
+### `case_payments`
+Payment records linked to a fee agreement.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | Auto-generated |
+| `case_fee_id` | uuid | FK → `case_fees(id)` ON DELETE CASCADE |
+| `office_id` | uuid | FK → `offices(id)` ON DELETE CASCADE |
+| `amount` | numeric(10,2) | Required |
+| `payment_date` | date | Default CURRENT_DATE |
+| `payment_method` | text | CHECK: `نقد`, `تحويل بنكي`, `شيك`, `بطاقة` |
+| `notes` | text | Nullable |
+| `recorded_by` | uuid | FK → `profiles(id)` ON DELETE SET NULL |
+| `created_at` | timestamptz | Auto |
+
+**RLS:** SELECT for all office members. INSERT for owner/admin or `can_manage_fees = true`. DELETE for owner/admin only.
+
+### `case_expenses`
+Expense records linked directly to a case.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | Auto-generated |
+| `case_id` | uuid | FK → `cases(id)` ON DELETE CASCADE |
+| `office_id` | uuid | FK → `offices(id)` ON DELETE CASCADE |
+| `amount` | numeric(10,2) | Required |
+| `expense_date` | date | Default CURRENT_DATE |
+| `description` | text | Required |
+| `recorded_by` | uuid | FK → `profiles(id)` ON DELETE SET NULL |
+| `created_at` | timestamptz | Auto |
+
+**RLS:** SELECT for all office members. INSERT for owner/admin or `can_manage_fees = true`. DELETE for owner/admin only.
 
 ## Storage Buckets
 

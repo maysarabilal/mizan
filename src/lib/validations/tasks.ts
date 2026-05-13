@@ -11,4 +11,5 @@ export const taskSchema = z.object({
   due_date: z.string().optional().nullable(),
   assigned_to: z.string().uuid().optional().nullable(),
   case_id: z.string().uuid().optional().nullable(),
+  session_id: z.string().uuid().optional().nullable(),
 })

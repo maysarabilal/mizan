@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
-import { AlertTriangle, Briefcase, Trash2, Edit2 } from 'lucide-react'
+import { AlertTriangle, Briefcase, Trash2, Edit2, Gavel } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation'
 
 type TaskRowExt = Database['public']['Tables']['tasks']['Row'] & {
   cases?: { title: string } | null
+  sessions?: { session_date: string; court: string | null } | null
   assigned_user?: { full_name: string } | null
 }
 type CaseRow = Database['public']['Tables']['cases']['Row']
@@ -28,6 +29,7 @@ type TeamMember = {
 interface TaskTableProps {
   tasks: TaskRowExt[]
   cases: CaseRow[]
+  sessions: Database['public']['Tables']['sessions']['Row'][]
   teamMembers: TeamMember[]
 }
 
@@ -43,7 +45,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> =
   done: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
 }
 
-export function TaskTable({ tasks, cases, teamMembers }: TaskTableProps) {
+export function TaskTable({ tasks, cases, sessions, teamMembers }: TaskTableProps) {
   const router = useRouter()
   const [editTask, setEditTask] = useState<TaskRowExt | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -85,6 +87,7 @@ export function TaskTable({ tasks, cases, teamMembers }: TaskTableProps) {
         due_date: task.due_date ?? null,
         assigned_to: task.assigned_to ?? null,
         case_id: task.case_id ?? null,
+        session_id: task.session_id ?? null,
       })
 
       if (error) {
@@ -104,7 +107,8 @@ export function TaskTable({ tasks, cases, teamMembers }: TaskTableProps) {
 
   return (
     <>
-      <div className="flex flex-col rounded-lg shadow-sm border border-black/8 dark:border-zinc-800 overflow-hidden">
+      {/* Desktop Table */}
+      <div className="hidden md:block flex flex-col rounded-lg shadow-sm border border-black/8 dark:border-zinc-800 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-black/8 dark:border-zinc-800 bg-[#F8F9FA] dark:bg-zinc-900">
@@ -114,6 +118,7 @@ export function TaskTable({ tasks, cases, teamMembers }: TaskTableProps) {
               <th className="text-right font-semibold text-[#8B939A] px-4 py-3 text-xs uppercase tracking-wider w-[130px]">تاريخ الاستحقاق</th>
               <th className="text-right font-semibold text-[#8B939A] px-4 py-3 text-xs uppercase tracking-wider w-[130px]">المُسند إليه</th>
               <th className="text-right font-semibold text-[#8B939A] px-4 py-3 text-xs uppercase tracking-wider w-[140px]">القضية المرتبطة</th>
+              <th className="text-right font-semibold text-[#8B939A] px-4 py-3 text-xs uppercase tracking-wider w-[140px]">الجلسة</th>
               <th className="text-right font-semibold text-[#8B939A] px-4 py-3 text-xs uppercase tracking-wider w-[90px]">إجراءات</th>
             </tr>
           </thead>
@@ -160,7 +165,9 @@ export function TaskTable({ tasks, cases, teamMembers }: TaskTableProps) {
                         >
                           <div className="flex items-center gap-1.5">
                             <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
-                            <SelectValue />
+                            <SelectValue>
+                              {STATUS_LABELS[displayStatus as AppStatus]}
+                            </SelectValue>
                           </div>
                         </SelectTrigger>
                         <SelectContent>
@@ -222,6 +229,21 @@ export function TaskTable({ tasks, cases, teamMembers }: TaskTableProps) {
                       )}
                     </td>
 
+                    {/* Related Session */}
+                    <td className="px-4 py-3" onClick={() => handleRowClick(task)}>
+                      {task.sessions ? (
+                        <div className="flex items-center gap-1.5 text-[13px] text-amber-600 font-medium">
+                          <Gavel className="h-3.5 w-3.5" />
+                          <span className="line-clamp-1">
+                            جلسة: {format(new Date(task.sessions.session_date), 'd MMM', { locale: ar })}
+                            {task.sessions.court && ` — ${task.sessions.court}`}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-[#8B939A]/50">—</span>
+                      )}
+                    </td>
+
                     {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -253,11 +275,127 @@ export function TaskTable({ tasks, cases, teamMembers }: TaskTableProps) {
         </table>
       </div>
 
+      {/* Mobile Cards */}
+      <div className="md:hidden flex flex-col gap-4">
+        {tasks.length === 0 ? (
+          <div className="text-center p-8 text-[#8B939A] bg-white rounded-xl border border-black/[0.08]">
+            لا توجد مهام بعد
+          </div>
+        ) : (
+          tasks.map((task) => {
+            const displayStatus = optimisticStatuses[task.id] ?? task.status
+            const isOverdue =
+              task.due_date &&
+              new Date(task.due_date) < new Date() &&
+              displayStatus !== 'done'
+
+            const priorityLabel = PRIORITY_LABELS[task.priority as AppPriority] ?? task.priority
+            const priorityStyle = PRIORITY_STYLES[task.priority] ?? PRIORITY_STYLES.low
+            const statusStyle = STATUS_STYLES[displayStatus] ?? STATUS_STYLES.todo
+
+            return (
+              <div 
+                key={task.id} 
+                className="bg-white border border-black/[0.08] rounded-xl p-4 flex flex-col gap-3 relative shadow-sm"
+                onClick={() => handleRowClick(task)}
+              >
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-bold text-[#0F1724] text-base">{task.title}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className={`text-[10px] px-2 py-0.5 font-medium ${priorityStyle}`}>
+                        {priorityLabel}
+                      </Badge>
+                      {task.due_date && (
+                        <span className={`flex items-center gap-1 text-[11px] font-medium ${isOverdue ? 'text-red-600' : 'text-[#8B939A]'}`}>
+                          {isOverdue && <AlertTriangle className="h-3 w-3 shrink-0" />}
+                          {format(new Date(task.due_date), 'd MMM yyyy', { locale: ar })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Select
+                      value={displayStatus}
+                      onValueChange={(val) => { if (val) handleStatusChange(task, val) }}
+                    >
+                      <SelectTrigger
+                        className={`h-8 w-[110px] text-xs font-medium border-0 rounded-md ${statusStyle.bg} ${statusStyle.text} focus:ring-0 focus:ring-offset-0`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
+                          <SelectValue>
+                            {STATUS_LABELS[displayStatus as AppStatus]}
+                          </SelectValue>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(STATUS_LABELS) as AppStatus[]).map(s => (
+                          <SelectItem key={s} value={s} className="text-xs cursor-pointer">
+                            {STATUS_LABELS[s]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 mt-1 py-3 border-y border-black/[0.04] text-[13px] text-[#5A6480]">
+                  {task.assigned_user && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-[#0F1724]">المسند إليه:</span>
+                      <span>{task.assigned_user.full_name}</span>
+                    </div>
+                  )}
+                  {task.cases && (
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-3.5 w-3.5 text-[#9AA3B2]" />
+                      <span className="truncate">{task.cases.title}</span>
+                    </div>
+                  )}
+                  {task.sessions && (
+                    <div className="flex items-center gap-2 text-amber-600 font-medium">
+                      <Gavel className="h-3.5 w-3.5" />
+                      <span className="truncate">
+                        جلسة: {format(new Date(task.sessions.session_date), 'd MMM', { locale: ar })}
+                        {task.sessions.court && ` — ${task.sessions.court}`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 mt-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleRowClick(task)
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-medium text-[#8B939A] hover:text-[#C9A84C]"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                    تعديل
+                  </button>
+                  <button
+                    onClick={(e) => handleDelete(e, task.id)}
+                    disabled={isDeleting === task.id}
+                    className="flex items-center gap-1.5 text-xs font-medium text-red-500 hover:text-red-700 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    حذف
+                  </button>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
       <TaskDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         taskItem={editTask}
         cases={cases}
+        sessions={sessions}
         teamMembers={teamMembers}
       />
     </>

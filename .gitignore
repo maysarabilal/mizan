@@ -44,3 +44,13 @@ next-env.d.ts
 /_archive/
 mizan-builder-prompt-no-n8n.md
 mizan-surgeon-prompt-v2.md
+
+# design assets and mockups (not source code)
+/landing-page/
+/phone-ui/
+/UI/
+image_50.png
+
+# AI agent working directories
+.agent/
+.gemini/

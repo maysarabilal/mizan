@@ -1,9 +1,13 @@
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
+import { MobileHeader } from '@/components/layout/MobileHeader'
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 import { SubscriptionGuard } from '@/components/layout/SubscriptionGuard'
+import { BetaSurveyBanner } from '@/components/layout/BetaSurveyBanner'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { checkSubscriptionStatus } from '@/lib/actions/subscription'
+import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar'
 
 export default async function DashboardLayout({
   children,
@@ -65,6 +69,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-[100dvh] w-full bg-gray-50 dark:bg-zinc-950 font-sans">
+      <ServiceWorkerRegistrar />
       {/* Desktop Sidebar */}
       <aside className="hidden md:block shrink-0 sticky top-0 h-screen">
         <Sidebar />
@@ -77,13 +82,17 @@ export default async function DashboardLayout({
             أمامك حتى الموعد {new Date(subStatus.overageInfo.graceDeadline).toLocaleDateString('ar')} لحذف الزيادة لتجنب التجميد التلقائي للمكتب.
           </div>
         )}
+        <BetaSurveyBanner />
+        <MobileHeader />
         <Topbar />
         
-        <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-6 overflow-x-hidden pb-24 md:pb-6">
           <SubscriptionGuard data={subStatus}>
             {children}
           </SubscriptionGuard>
         </main>
+        
+        <MobileBottomNav />
       </div>
     </div>
   )

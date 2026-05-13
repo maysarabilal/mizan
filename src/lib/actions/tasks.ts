@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/types/actions'
 import { requireActiveSubscription } from '@/lib/actions/subscription'
+import { sendPushToUser } from '@/lib/utils/sendPushToUser'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   PRIORITY_TO_DB,
   DB_TO_PRIORITY,
@@ -26,6 +28,7 @@ export async function getTasks(searchQuery?: string) {
     .select(`
       *,
       cases (title),
+      sessions (session_date, court),
       assigned_user:profiles!tasks_assigned_to_fkey(full_name)
     `)
     .order('created_at', { ascending: false })
@@ -64,6 +67,7 @@ export async function createTaskAction(values: z.infer<typeof taskSchema>): Prom
 
   const assignedTo = result.data.assigned_to || null
   const caseId = result.data.case_id || null
+  const sessionId = result.data.session_id || null
   const dbPriority = PRIORITY_TO_DB[result.data.priority] ?? result.data.priority
   const dbStatus = STATUS_TO_DB[result.data.status] ?? result.data.status
 
@@ -89,6 +93,20 @@ export async function createTaskAction(values: z.infer<typeof taskSchema>): Prom
     if (!caseRecord) return { data: null, error: 'القضية المحددة غير موجودة' }
   }
 
+  // If session is provided, verify it belongs to the same case/office
+  if (sessionId) {
+    const { data: sessionRecord } = await supabase
+      .from('sessions')
+      .select('id, case_id')
+      .eq('id', sessionId)
+      .eq('office_id', member.office_id)
+      .single()
+    if (!sessionRecord) return { data: null, error: 'الجلسة المحددة غير موجودة' }
+    if (caseId && sessionRecord.case_id !== caseId) {
+      return { data: null, error: 'الجلسة المحددة لا تنتمي لنفس القضية المحددة' }
+    }
+  }
+
   // If assigned_to is provided, verify they are in the same office
   if (assignedTo) {
     const { data: assignedMember } = await supabase
@@ -111,6 +129,7 @@ export async function createTaskAction(values: z.infer<typeof taskSchema>): Prom
     due_date: result.data.due_date || null,
     assigned_to: assignedTo,
     case_id: caseId,
+    session_id: sessionId,
   })
 
   if (error) {
@@ -136,6 +155,7 @@ export async function updateTaskAction(id: string, values: z.infer<typeof taskSc
 
   const assignedTo = result.data.assigned_to || null
   const caseId = result.data.case_id || null
+  const sessionId = result.data.session_id || null
   // Convert English status/priority to Arabic for DB
   const dbPriority = PRIORITY_TO_DB[result.data.priority] ?? result.data.priority
   const dbStatus = STATUS_TO_DB[result.data.status] ?? result.data.status
@@ -172,6 +192,20 @@ export async function updateTaskAction(id: string, values: z.infer<typeof taskSc
     if (!caseRecord) return { data: null, error: 'القضية المحددة غير موجودة' }
   }
 
+  // If session is provided, verify it belongs to the same case/office
+  if (sessionId) {
+    const { data: sessionRecord } = await supabase
+      .from('sessions')
+      .select('id, case_id')
+      .eq('id', sessionId)
+      .eq('office_id', member.office_id)
+      .single()
+    if (!sessionRecord) return { data: null, error: 'الجلسة المحددة غير موجودة' }
+    if (caseId && sessionRecord.case_id !== caseId) {
+      return { data: null, error: 'الجلسة المحددة لا تنتمي لنفس القضية المحددة' }
+    }
+  }
+
   if (assignedTo) {
     const { data: assignedMember } = await supabase
       .from('office_members')
@@ -193,6 +227,7 @@ export async function updateTaskAction(id: string, values: z.infer<typeof taskSc
       due_date: result.data.due_date ? result.data.due_date : null,
       assigned_to: assignedTo,
       case_id: caseId,
+      session_id: sessionId,
       updated_at: new Date().toISOString()
     })
     .eq('id', id)
@@ -218,13 +253,22 @@ export async function updateTaskAction(id: string, values: z.infer<typeof taskSc
             : null
 
         if (notifyUserId) {
-          await supabase.from('notifications').insert({
+          // Use admin client — inserting notification for another user (RLS blocks regular INSERT)
+          const adminDb = createAdminClient()
+          await adminDb.from('notifications').insert({
             office_id: member.office_id,
             user_id: notifyUserId,
             type: 'task',
             title: 'تم إكمال مهمة',
             body: `تم إكمال المهمة "${existingTask.title}" بواسطة أحد أعضاء الفريق.`,
             related_entity_id: id,
+          })
+
+          // Fire-and-forget push notification
+          sendPushToUser(notifyUserId, {
+            title: 'مهمة مكتملة ✅',
+            body: `تم إكمال المهمة "${existingTask.title}" بواسطة أحد أعضاء الفريق.`,
+            url: '/dashboard/tasks',
           })
         }
       }

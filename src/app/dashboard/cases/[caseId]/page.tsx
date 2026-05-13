@@ -5,7 +5,6 @@ import { requireActiveSubscription } from '@/lib/actions/subscription'
 import { CaseDetailClient } from './CaseDetailClient'
 import CaseDetailLoading from './loading'
 
-export const dynamic = 'force-dynamic'
 
 interface CaseDetailPageProps {
   params: Promise<{ caseId: string }>
@@ -56,7 +55,7 @@ async function CaseDetailContent({ params }: CaseDetailPageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   const { data: member } = await supabase
     .from('office_members')
-    .select('role')
+    .select('role, can_manage_fees')
     .eq('user_id', user?.id || '')
     .single()
 
@@ -66,6 +65,7 @@ async function CaseDetailContent({ params }: CaseDetailPageProps) {
       sessions={sessionsResult.data || []}
       currentUserId={user?.id || ''}
       userRole={member?.role || ''}
+      canManageFees={member?.can_manage_fees || false}
     />
   )
 }

@@ -43,62 +43,67 @@ export async function getCaseAttachments(caseId: string): Promise<ActionResult<(
   return { data: mapped, error: null }
 }
 
-export async function uploadCaseAttachment(caseId: string, formData: FormData): Promise<ActionResult<CaseAttachment>> {
+export async function saveAttachmentRecord(params: {
+  entityType: 'case' | 'session'
+  entityId: string
+  fileName: string
+  fileUrl: string
+  fileType: string
+  fileSize: number
+  storagePath: string
+}): Promise<ActionResult<CaseAttachment | SessionAttachment>> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { data: null, error: 'غير مصرح' }
 
-  const file = formData.get('file') as File | null
-  if (!file) return { data: null, error: 'لم يتم تحديد ملف' }
-
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return { data: null, error: 'نوع الملف غير مدعوم. الأنواع المسموحة: JPEG, PNG, WebP, PDF, DOC, DOCX' }
-  }
-
-  if (file.size > MAX_FILE_SIZE) {
-    return { data: null, error: 'حجم الملف يتجاوز 15 ميغابايت' }
-  }
-
-  // Get office_id
   const { data: officeId } = await supabase.rpc('current_office_id').single()
   if (!officeId) return { data: null, error: 'لم يتم تحديد المكتب' }
 
-  const timestamp = Date.now()
-  const safeName = file.name.replace(/[^a-zA-Z0-9._\u0600-\u06FF-]/g, '_')
-  const storagePath = `cases/${caseId}/${timestamp}_${safeName}`
+  if (params.entityType === 'case') {
+    const { data: attachment, error: insertError } = await supabase
+      .from('case_attachments')
+      .insert({
+        case_id: params.entityId,
+        office_id: officeId,
+        uploaded_by: user.id,
+        file_name: params.fileName,
+        file_url: params.fileUrl,
+        file_type: params.fileType,
+        file_size: params.fileSize,
+      })
+      .select()
+      .single()
 
-  const { error: uploadError } = await supabase.storage
-    .from('uploads')
-    .upload(storagePath, file, { upsert: false })
+    if (insertError) {
+      console.error('Insert case attachment error:', insertError)
+      return { data: null, error: 'فشل في حفظ بيانات المرفق' }
+    }
 
-  if (uploadError) {
-    console.error('Storage upload error:', uploadError)
-    return { data: null, error: 'فشل في رفع الملف' }
+    revalidatePath(`/dashboard/cases/${params.entityId}`)
+    return { data: attachment, error: null }
+  } else {
+    const { data: attachment, error: insertError } = await supabase
+      .from('session_attachments')
+      .insert({
+        session_id: params.entityId,
+        office_id: officeId,
+        uploaded_by: user.id,
+        file_name: params.fileName,
+        file_url: params.fileUrl,
+        file_type: params.fileType,
+        file_size: params.fileSize,
+      })
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('Insert session attachment error:', insertError)
+      return { data: null, error: 'فشل في حفظ بيانات المرفق' }
+    }
+
+    revalidatePath(`/dashboard/sessions/${params.entityId}`)
+    return { data: attachment, error: null }
   }
-
-  const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(storagePath)
-
-  const { data: attachment, error: insertError } = await supabase
-    .from('case_attachments')
-    .insert({
-      case_id: caseId,
-      office_id: officeId,
-      uploaded_by: user.id,
-      file_name: file.name,
-      file_url: urlData.publicUrl,
-      file_type: file.type,
-      file_size: file.size,
-    })
-    .select()
-    .single()
-
-  if (insertError) {
-    console.error('Insert case attachment error:', insertError)
-    return { data: null, error: 'فشل في حفظ بيانات المرفق' }
-  }
-
-  revalidatePath(`/dashboard/cases/${caseId}`)
-  return { data: attachment, error: null }
 }
 
 export async function deleteCaseAttachment(attachmentId: string): Promise<ActionResult<null>> {
@@ -177,62 +182,7 @@ export async function getSessionAttachments(sessionId: string): Promise<ActionRe
   return { data: mapped, error: null }
 }
 
-export async function uploadSessionAttachment(sessionId: string, formData: FormData): Promise<ActionResult<SessionAttachment>> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { data: null, error: 'غير مصرح' }
 
-  const file = formData.get('file') as File | null
-  if (!file) return { data: null, error: 'لم يتم تحديد ملف' }
-
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return { data: null, error: 'نوع الملف غير مدعوم. الأنواع المسموحة: JPEG, PNG, WebP, PDF, DOC, DOCX' }
-  }
-
-  if (file.size > MAX_FILE_SIZE) {
-    return { data: null, error: 'حجم الملف يتجاوز 15 ميغابايت' }
-  }
-
-  const { data: officeId } = await supabase.rpc('current_office_id').single()
-  if (!officeId) return { data: null, error: 'لم يتم تحديد المكتب' }
-
-  const timestamp = Date.now()
-  const safeName = file.name.replace(/[^a-zA-Z0-9._\u0600-\u06FF-]/g, '_')
-  const storagePath = `sessions/${sessionId}/${timestamp}_${safeName}`
-
-  const { error: uploadError } = await supabase.storage
-    .from('uploads')
-    .upload(storagePath, file, { upsert: false })
-
-  if (uploadError) {
-    console.error('Storage upload error:', uploadError)
-    return { data: null, error: 'فشل في رفع الملف' }
-  }
-
-  const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(storagePath)
-
-  const { data: attachment, error: insertError } = await supabase
-    .from('session_attachments')
-    .insert({
-      session_id: sessionId,
-      office_id: officeId,
-      uploaded_by: user.id,
-      file_name: file.name,
-      file_url: urlData.publicUrl,
-      file_type: file.type,
-      file_size: file.size,
-    })
-    .select()
-    .single()
-
-  if (insertError) {
-    console.error('Insert session attachment error:', insertError)
-    return { data: null, error: 'فشل في حفظ بيانات المرفق' }
-  }
-
-  revalidatePath(`/dashboard/sessions/${sessionId}`)
-  return { data: attachment, error: null }
-}
 
 export async function deleteSessionAttachment(attachmentId: string): Promise<ActionResult<null>> {
   const supabase = await createClient()

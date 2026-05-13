@@ -52,9 +52,10 @@ const statusConfig: Record<string, { label: string; bg: string; text: string }> 
 interface SessionTableListProps {
   sessions: SessionRowExt[]
   cases: CaseRow[]
+  workingDays: string[]
 }
 
-export function SessionTableList({ sessions, cases }: SessionTableListProps) {
+export function SessionTableList({ sessions, cases, workingDays }: SessionTableListProps) {
   const router = useRouter()
 
   const [editingSession, setEditingSession] = useState<SessionRowExt | null>(null)
@@ -231,6 +232,7 @@ export function SessionTableList({ sessions, cases }: SessionTableListProps) {
         }}
         sessionItem={editingSession}
         cases={cases}
+        workingDays={workingDays}
       />
 
       {/* Delete confirmation */}

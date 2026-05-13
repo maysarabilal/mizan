@@ -10,7 +10,6 @@ import CasesLoading from './loading'
 import { AddCaseButton } from './_components/AddCaseButton'
 import { redirect } from 'next/navigation'
 
-export const dynamic = 'force-dynamic'
 
 interface SearchParams {
   q?: string

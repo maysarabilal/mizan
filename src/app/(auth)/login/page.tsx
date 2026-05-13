@@ -41,10 +41,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full rounded-xl bg-white p-8 shadow-sm border dark:bg-zinc-900 dark:border-zinc-800">
+    <div className="flex flex-col gap-6 w-full rounded-xl bg-l-navy border border-l-gold/20 p-8 shadow-l-gold shadow-sm">
       <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">تسجيل الدخول - ميزان</h1>
-        <p className="text-sm text-muted-foreground">أدخل بريدك الإلكتروني وكلمة المرور للولوج لحسابك</p>
+        <h1 className="text-2xl font-bold tracking-tight text-gradient-l-gold font-cormorant">تسجيل الدخول</h1>
+        <p className="text-sm text-l-muted">أهلاً بك مجدداً في ميزان</p>
       </div>
 
       <Form {...form}>
@@ -54,9 +54,9 @@ export default function LoginPage() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>البريد الإلكتروني</FormLabel>
+                <FormLabel className="text-l-text">البريد الإلكتروني</FormLabel>
                 <FormControl>
-                  <Input placeholder="name@example.com" type="email" dir="ltr" className="text-right rtl:text-left" disabled={isSubmitting} {...field} />
+                  <Input placeholder="name@example.com" type="email" dir="ltr" className="text-right rtl:text-left bg-l-charcoal border-l-gold/15 text-l-text focus:border-l-gold" disabled={isSubmitting} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -69,29 +69,36 @@ export default function LoginPage() {
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center justify-between">
-                  <FormLabel>كلمة المرور</FormLabel>
-                  <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                  <FormLabel className="text-l-text">كلمة المرور</FormLabel>
+                  <Link href="/forgot-password" title="نسيت كلمة المرور؟" className="text-xs text-l-gold hover:underline">
                     نسيت كلمة المرور؟
                   </Link>
                 </div>
                 <FormControl>
-                  <Input type="password" dir="ltr" className="text-right rtl:text-left" disabled={isSubmitting} {...field} />
+                  <Input type="password" dir="ltr" className="text-right rtl:text-left bg-l-charcoal border-l-gold/15 text-l-text focus:border-l-gold" disabled={isSubmitting} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          <Button type="submit" className="w-full mt-2" disabled={isSubmitting}>
-            {isSubmitting ? 'جاري التحقق...' : 'دخول'}
+          <Button type="submit" className="w-full mt-2 bg-gradient-l-gold text-l-navy hover:brightness-110" disabled={isSubmitting}>
+            {isSubmitting ? 'جاري الدخول...' : 'دخول'}
           </Button>
         </form>
       </Form>
 
       <div className="text-center text-sm">
-        ليس لديك حساب؟{' '}
-        <Link href="/register" className="font-semibold text-primary hover:underline">
-          سجل مكتباً جديداً
+        <span className="text-white/60">ليس لديك حساب؟</span>{' '}
+        <Link href="/register" className="font-bold text-l-gold hover:text-l-gold-light transition-colors underline underline-offset-4 decoration-l-gold/30">
+          أنشئ حسابك الآن
+        </Link>
+      </div>
+
+      <div className="flex justify-center pt-2">
+        <Link href="/" className="flex items-center gap-2 text-xs text-l-gold/70 hover:text-l-gold transition-colors">
+          <span>العودة للرئيسية</span>
+          <span className="rotate-180">&#10140;</span>
         </Link>
       </div>
     </div>

@@ -318,6 +318,51 @@ export async function updateMemberPermissionsAction(values: z.infer<typeof updat
   return { data: null, error: null }
 }
 
+export async function updateMemberCanManageFeesAction(memberId: string, canManageFees: boolean): Promise<ActionResult> {
+  const guardError = await requireActiveSubscription()
+  if (guardError) return { data: null, error: guardError }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { data: null, error: 'يجب تسجيل الدخول' }
+
+  // Only owner/admin can toggle this
+  const { data: currentMember } = await supabase
+    .from('office_members')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .single()
+
+  if (!currentMember || !['owner', 'admin'].includes(currentMember.role)) {
+    return { data: null, error: 'فقط المالك أو المدير يمكنه تعديل هذا الإعداد' }
+  }
+
+  const { data: targetMember } = await supabase
+    .from('office_members')
+    .select('role, user_id')
+    .eq('id', memberId)
+    .single()
+
+  if (!targetMember) return { data: null, error: 'العضو غير موجود' }
+  if (targetMember.role === 'owner') return { data: null, error: 'لا يمكن تعديل إعدادات المالك' }
+
+  const adminSupabase = createAdminClient()
+  const { error } = await adminSupabase
+    .from('office_members')
+    .update({ can_manage_fees: canManageFees, updated_at: new Date().toISOString() })
+    .eq('id', memberId)
+
+  if (error) {
+    console.error('Error updating can_manage_fees:', error)
+    return { data: null, error: 'فشل تحديث الإعداد' }
+  }
+
+  revalidatePath('/dashboard/team')
+  revalidatePath(`/dashboard/team/${memberId}`)
+  return { data: null, error: null }
+}
+
 export async function toggleMemberStatusAction(id: string, isActive: boolean): Promise<ActionResult> {
   const guardError = await requireActiveSubscription({ allowOverageRemediation: true })
   if (guardError) return { data: null, error: guardError }

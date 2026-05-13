@@ -16,6 +16,7 @@ import Image from 'next/image'
 
 import { officeSettingsSchema } from '@/lib/validations/settings'
 import { updateOfficeSettingsAction, uploadOfficeLogo } from '@/lib/actions/settings'
+import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -426,35 +427,59 @@ export function SettingsClient({ office, activityLogs }: SettingsClientProps) {
                 <p className="text-xs text-[#9AA3B2] mt-1">ستظهر هنا سجلات تسجيل الدخول والعمليات المهمة.</p>
               </div>
             ) : (
-              <div className="border border-black/8 rounded-xl overflow-hidden">
-                <table className="w-full text-right">
-                  <thead>
-                    <tr className="border-b border-black/8 bg-[#F9FAFB]">
-                      <th className="text-xs font-semibold text-[#9AA3B2] uppercase tracking-wider p-3 px-4">النشاط</th>
-                      <th className="text-xs font-semibold text-[#9AA3B2] uppercase tracking-wider p-3 px-4">المتصفح</th>
-                      <th className="text-xs font-semibold text-[#9AA3B2] uppercase tracking-wider p-3 px-4">الجهاز</th>
-                      <th className="text-xs font-semibold text-[#9AA3B2] uppercase tracking-wider p-3 px-4">التاريخ والوقت</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activityLogs.map((log) => (
-                      <tr key={log.id} className="border-b border-black/5 last:border-b-0 hover:bg-black/[0.02] transition-colors">
-                        <td className="p-3 px-4 text-sm text-[#0F1724]">{log.action}</td>
-                        <td className="p-3 px-4 text-sm text-[#9AA3B2]">{log.details?.browser || '—'}</td>
-                        <td className="p-3 px-4">
-                          <div className="flex items-center gap-2">
-                            {getDeviceIcon(log.details?.device)}
-                            <span className="text-sm text-[#9AA3B2]">{log.details?.device || '—'}</span>
-                          </div>
-                        </td>
-                        <td className="p-3 px-4 text-sm text-[#9AA3B2]" dir="ltr">
-                          {format(new Date(log.created_at), 'yyyy/MM/dd HH:mm')}
-                        </td>
+              <>
+                {/* Desktop Table */}
+                <div className="hidden sm:block border border-black/8 rounded-xl overflow-hidden">
+                  <table className="w-full text-right">
+                    <thead>
+                      <tr className="border-b border-black/8 bg-[#F9FAFB]">
+                        <th className="text-xs font-semibold text-[#9AA3B2] uppercase tracking-wider p-3 px-4">النشاط</th>
+                        <th className="text-xs font-semibold text-[#9AA3B2] uppercase tracking-wider p-3 px-4">المتصفح</th>
+                        <th className="text-xs font-semibold text-[#9AA3B2] uppercase tracking-wider p-3 px-4">الجهاز</th>
+                        <th className="text-xs font-semibold text-[#9AA3B2] uppercase tracking-wider p-3 px-4">التاريخ والوقت</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {activityLogs.map((log) => (
+                        <tr key={log.id} className="border-b border-black/5 last:border-b-0 hover:bg-black/[0.02] transition-colors">
+                          <td className="p-3 px-4 text-sm text-[#0F1724]">{log.action}</td>
+                          <td className="p-3 px-4 text-sm text-[#9AA3B2]">{log.details?.browser || '—'}</td>
+                          <td className="p-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {getDeviceIcon(log.details?.device)}
+                              <span className="text-sm text-[#9AA3B2]">{log.details?.device || '—'}</span>
+                            </div>
+                          </td>
+                          <td className="p-3 px-4 text-sm text-[#9AA3B2]" dir="ltr">
+                            {format(new Date(log.created_at), 'yyyy/MM/dd HH:mm')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="block sm:hidden flex flex-col gap-3">
+                  {activityLogs.map((log) => (
+                    <div key={log.id} className="border border-black/8 rounded-xl p-4 flex flex-col gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-sm font-medium text-[#0F1724]">{log.action}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {getDeviceIcon(log.details?.device)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-[#9AA3B2]">
+                        {log.details?.browser && <span>{log.details.browser}</span>}
+                        {log.details?.device && <span>{log.details.device}</span>}
+                      </div>
+                      <span className="text-xs text-[#9AA3B2]" dir="ltr">
+                        {format(new Date(log.created_at), 'yyyy/MM/dd HH:mm')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 
@@ -471,6 +496,11 @@ export function SettingsClient({ office, activityLogs }: SettingsClientProps) {
             </div>
 
             <div className="flex flex-col gap-4">
+              {/* Push Notifications */}
+              <div className="mb-4 pb-4 border-b border-black/8">
+                <PushNotificationToggle />
+              </div>
+
               <FormField
                 control={form.control}
                 name="session_reminders"
@@ -534,14 +564,14 @@ export function SettingsClient({ office, activityLogs }: SettingsClientProps) {
           </div>
 
           {/* Save Button */}
-          <div className="flex gap-4 justify-end">
-            <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isSubmitting}>
+          <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isSubmitting} className="w-full sm:w-auto">
               تراجع
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-[#1A2744] hover:bg-[#1A2744]/90 text-white min-w-[160px]"
+              className="w-full sm:w-auto bg-[#1A2744] hover:bg-[#1A2744]/90 text-white sm:min-w-[160px]"
             >
               {isSubmitting ? (
                 <><Loader2 className="me-2 h-4 w-4 animate-spin" /> جاري الحفظ...</>

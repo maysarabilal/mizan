@@ -12,7 +12,7 @@ export async function getNotifications(limit = 50) {
 
   const { data, error } = await supabase
     .from('notifications')
-    .select('*')
+    .select('id, user_id, office_id, type, title, body, is_read, related_entity_id, created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -75,5 +75,55 @@ export async function markAllAsReadAction(): Promise<ActionResult> {
 
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/notifications')
+  return { data: null, error: null }
+}
+
+export async function savePushSubscription(subscription: any): Promise<ActionResult<void>> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { data: null, error: 'Unauthorized' }
+
+  // Get current office
+  const { data: officeData } = await supabase.rpc('current_office_id').single()
+  const office_id = officeData || null
+
+  if (!office_id) return { data: null, error: 'Office not found' }
+
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .upsert({
+      user_id: user.id,
+      office_id: office_id,
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth
+    }, { onConflict: 'user_id, endpoint' })
+
+  if (error) {
+    console.error('Error saving push subscription:', error)
+    return { data: null, error: 'فشل حفظ إعدادات الإشعارات' }
+  }
+
+  return { data: null, error: null }
+}
+
+export async function removePushSubscription(endpoint: string): Promise<ActionResult<void>> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { data: null, error: 'Unauthorized' }
+
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('endpoint', endpoint)
+
+  if (error) {
+    console.error('Error removing push subscription:', error)
+    return { data: null, error: 'فشل إزالة إعدادات الإشعارات' }
+  }
+
   return { data: null, error: null }
 }

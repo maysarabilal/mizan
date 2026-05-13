@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { SessionDialog } from '@/app/dashboard/sessions/SessionDialog'
 import { deleteSessionAction } from '@/lib/actions/sessions'
-import { getSessionAttachments, uploadSessionAttachment, deleteSessionAttachment } from '@/lib/actions/attachments'
+import { getSessionAttachments, deleteSessionAttachment } from '@/lib/actions/attachments'
 import { AttachmentsSection } from '@/components/attachments/AttachmentsSection'
 import { Database } from '@/types/database'
 
@@ -94,6 +94,7 @@ export function SessionDetailClient({ session, cases, currentUserId, userRole }:
 
         <div className="flex gap-2">
           <Button
+            type="button"
             variant="outline"
             onClick={() => setEditOpen(true)}
             className="gap-2 border-black/8"
@@ -101,6 +102,7 @@ export function SessionDetailClient({ session, cases, currentUserId, userRole }:
             <Pencil className="h-4 w-4" /> تعديل
           </Button>
           <Button
+            type="button"
             variant="outline"
             onClick={() => setDeleteOpen(true)}
             className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:hover:bg-red-950"
@@ -234,7 +236,6 @@ export function SessionDetailClient({ session, cases, currentUserId, userRole }:
         currentUserId={currentUserId}
         userRole={userRole}
         fetchAttachments={getSessionAttachments}
-        uploadAttachment={uploadSessionAttachment}
         deleteAttachment={deleteSessionAttachment}
       />
 
@@ -249,7 +250,7 @@ export function SessionDetailClient({ session, cases, currentUserId, userRole }:
             </div>
           </div>
           <Link href={`/dashboard/cases/${caseData.id}`}>
-            <Button variant="outline" size="sm" className="gap-2 border-black/8">
+            <Button type="button" variant="outline" size="sm" className="gap-2 border-black/8">
               عرض القضية <ArrowRight className="h-3.5 w-3.5 rotate-180" />
             </Button>
           </Link>
@@ -276,8 +277,8 @@ export function SessionDetailClient({ session, cases, currentUserId, userRole }:
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-4 justify-end">
-            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={isDeleting}>تراجع</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+            <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)} disabled={isDeleting}>تراجع</Button>
+            <Button type="button" variant="destructive" onClick={handleDelete} disabled={isDeleting}>
               {isDeleting ? 'جاري الحذف...' : 'حذف نهائي!'}
             </Button>
           </div>

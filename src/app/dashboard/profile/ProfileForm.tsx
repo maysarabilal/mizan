@@ -226,12 +226,11 @@ export function ProfileForm({ initialData, role }: ProfileFormProps) {
               <p className="text-xs text-[#9AA3B2] mt-1.5">يتم تحديد الدور بواسطة مدير المكتب.</p>
             </div>
 
-            {/* Save Button */}
-            <div className="pt-2 flex justify-end">
+            <div className="pt-2">
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-[#1A2744] hover:bg-[#1A2744]/90 text-white min-w-[160px]"
+                className="w-full md:w-auto bg-[#1A2744] hover:bg-[#1A2744]/90 text-white md:min-w-[160px]"
               >
                 {isSubmitting ? (
                   <><Loader2 className="me-2 h-4 w-4 animate-spin" /> جاري الحفظ...</>

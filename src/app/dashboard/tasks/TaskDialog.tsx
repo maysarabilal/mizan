@@ -15,7 +15,8 @@ import {
   Type, 
   AlignLeft,
   ChevronDown,
-  Loader2
+  Loader2,
+  Gavel
 } from 'lucide-react'
 
 import { taskSchema } from '@/lib/validations/tasks'
@@ -34,6 +35,7 @@ import { deleteTaskAction } from '@/lib/actions/tasks'
 
 type TaskRowExt = Database['public']['Tables']['tasks']['Row'] & { 
   cases?: { title: string } | null,
+  sessions?: { session_date: string; court: string | null } | null,
   assigned_user?: { full_name: string } | null
 }
 type CaseRow = Database['public']['Tables']['cases']['Row']
@@ -42,11 +44,14 @@ type TeamMember = {
   profiles: { full_name: string } | null
 }
 
+type SessionRow = Database['public']['Tables']['sessions']['Row']
+
 interface TaskDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   taskItem?: TaskRowExt | null
   cases: CaseRow[]
+  sessions: SessionRow[]
   teamMembers: TeamMember[]
   defaultStatus?: string
 }
@@ -61,7 +66,7 @@ const PRIORITIES = (Object.keys(PRIORITY_LABELS) as AppPriority[]).map((value) =
   label: PRIORITY_LABELS[value],
 }))
 
-export function TaskDialog({ open, onOpenChange, taskItem, cases, teamMembers, defaultStatus }: TaskDialogProps) {
+export function TaskDialog({ open, onOpenChange, taskItem, cases, sessions, teamMembers, defaultStatus }: TaskDialogProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isEditing = !!taskItem
@@ -76,7 +81,15 @@ export function TaskDialog({ open, onOpenChange, taskItem, cases, teamMembers, d
       due_date: '',
       assigned_to: null,
       case_id: null,
+      session_id: null,
     },
+  })
+
+  // Watch case_id to filter sessions
+  const watchedCaseId = form.watch('case_id')
+  const filteredSessions = sessions.filter(s => {
+    if (!watchedCaseId) return true
+    return s.case_id === watchedCaseId
   })
 
   useEffect(() => {
@@ -90,6 +103,7 @@ export function TaskDialog({ open, onOpenChange, taskItem, cases, teamMembers, d
       due_date: taskItem?.due_date || '',
       assigned_to: taskItem?.assigned_to || null,
       case_id: taskItem?.case_id || null,
+      session_id: taskItem?.session_id || null,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
   }, [open, taskItem, defaultStatus, form])
@@ -218,7 +232,9 @@ export function TaskDialog({ open, onOpenChange, taskItem, cases, teamMembers, d
                       >
                         <FormControl>
                           <SelectTrigger className="bg-slate-50/50 border-slate-200 rounded-xl h-11 focus:ring-[#C9A84C] focus:border-[#C9A84C]">
-                            <SelectValue />
+                            <SelectValue>
+                              {field.value ? STATUS_LABELS[field.value as AppStatus] : "الحالة"}
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="rounded-xl border-slate-200">
@@ -247,7 +263,9 @@ export function TaskDialog({ open, onOpenChange, taskItem, cases, teamMembers, d
                       <Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="bg-slate-50/50 border-slate-200 rounded-xl h-11 focus:ring-[#C9A84C] focus:border-[#C9A84C]">
-                            <SelectValue />
+                            <SelectValue>
+                              {field.value ? PRIORITY_LABELS[field.value as AppPriority] : "الأهمية"}
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="rounded-xl border-slate-200">
@@ -342,7 +360,12 @@ export function TaskDialog({ open, onOpenChange, taskItem, cases, teamMembers, d
                       </FormLabel>
                       <Select
                         disabled={isSubmitting}
-                        onValueChange={(val) => field.onChange(val === '__none__' ? null : val)}
+                        onValueChange={(val) => {
+                          const newVal = val === '__none__' ? null : val
+                          field.onChange(newVal)
+                          // Reset session when case changes
+                          form.setValue('session_id', null)
+                        }}
                         value={field.value ?? '__none__'}
                       >
                         <FormControl>
@@ -367,6 +390,49 @@ export function TaskDialog({ open, onOpenChange, taskItem, cases, teamMembers, d
                     </FormItem>
                   )}
                 />
+
+                {/* Related Session */}
+                {filteredSessions.length > 0 && (
+                  <FormField
+                    control={form.control}
+                    name="session_id"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-slate-700 font-semibold flex items-center gap-2">
+                          <Gavel className="h-4 w-4 text-[#C9A84C]" />
+                          ربط بجلسة محكمة
+                        </FormLabel>
+                        <Select
+                          disabled={isSubmitting}
+                          onValueChange={(val) => field.onChange(val === '__none__' ? null : val)}
+                          value={field.value ?? '__none__'}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="bg-white border-slate-200 rounded-xl h-11 shadow-sm border-dashed border-2 hover:border-[#C9A84C] transition-colors">
+                              <SelectValue placeholder="غير مرتبطة بجلسة">
+                                {field.value
+                                  ? (() => {
+                                      const s = sessions.find(s => s.id === field.value)
+                                      return s ? `${s.session_date} — ${s.court || 'بدون موقع'}` : 'جلسة غير معروفة'
+                                    })()
+                                  : "بدون ارتباط بجلسة"}
+                              </SelectValue>
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="rounded-xl border-slate-200">
+                            <SelectItem value="__none__" className="text-slate-400">— بدون ارتباط بجلسة —</SelectItem>
+                            {filteredSessions.map(s => (
+                              <SelectItem key={s.id} value={s.id} className="focus:bg-[#C9A84C]/10 focus:text-[#92741F] cursor-pointer">
+                                {s.session_date} — {s.court || 'بدون موقع'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
 
             </form>

@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
+import { createClient } from '@/lib/supabase/browser'
+import { saveAttachmentRecord } from '@/lib/actions/attachments'
 
 interface Attachment {
   id: string
@@ -31,7 +33,6 @@ interface AttachmentsSectionProps {
   currentUserId: string
   userRole: string
   fetchAttachments: (entityId: string) => Promise<{ data: Attachment[] | null; error: string | null }>
-  uploadAttachment: (entityId: string, formData: FormData) => Promise<{ data: unknown | null; error: string | null }>
   deleteAttachment: (attachmentId: string) => Promise<{ data: unknown | null; error: string | null }>
 }
 
@@ -61,7 +62,6 @@ export function AttachmentsSection({
   currentUserId,
   userRole,
   fetchAttachments,
-  uploadAttachment,
   deleteAttachment,
 }: AttachmentsSectionProps) {
   const router = useRouter()
@@ -98,21 +98,72 @@ export function AttachmentsSection({
     // Reset input so same file can be re-uploaded
     if (fileInputRef.current) fileInputRef.current.value = ''
 
-    setIsUploading(true)
-    const formData = new FormData()
-    formData.append('file', file)
-
-    const { error } = await uploadAttachment(entityId, formData)
-    setIsUploading(false)
-
-    if (error) {
-      toast.error(error)
+    // 1. Validate file type and size
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/webp',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ]
+    
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('نوع الملف غير مدعوم')
+      return
+    }
+    
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('حجم الملف يتجاوز 15 ميغابايت')
       return
     }
 
-    toast.success('تم رفع المرفق بنجاح')
-    await loadAttachments()
-    router.refresh()
+    setIsUploading(true)
+
+    try {
+      const supabase = createClient()
+
+      // 2. Generate storage path
+      const timestamp = Date.now()
+      const safeName = file.name.replace(/[^a-zA-Z0-9._\u0600-\u06FF-]/g, '_')
+      const folder = entityType === 'case' ? 'cases' : 'sessions'
+      const storagePath = `${folder}/${entityId}/${timestamp}_${safeName}`
+
+      // 3. Upload File object directly from browser
+      const { error: uploadError } = await supabase.storage
+        .from('uploads')
+        .upload(storagePath, file, {
+          contentType: file.type,
+          upsert: true,
+        })
+
+      if (uploadError) throw uploadError
+
+      // 4. Get public URL
+      const { data: urlData } = supabase.storage
+        .from('uploads')
+        .getPublicUrl(storagePath)
+
+      // 5. Save metadata to DB via Server Action
+      const result = await saveAttachmentRecord({
+        entityType,
+        entityId,
+        fileName: file.name,
+        fileUrl: urlData.publicUrl,
+        fileType: file.type,
+        fileSize: file.size,
+        storagePath,
+      })
+
+      if (result.error) throw new Error(result.error)
+
+      toast.success('تم رفع المرفق بنجاح')
+      await loadAttachments()
+      router.refresh()
+    } catch (err: any) {
+      toast.error(err.message || 'فشل رفع الملف')
+      console.error(err)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   async function handleDelete(attachmentId: string) {
@@ -143,6 +194,7 @@ export function AttachmentsSection({
           </span>
         </div>
         <Button
+          type="button"
           variant="outline"
           size="sm"
           onClick={() => fileInputRef.current?.click()}
@@ -177,6 +229,7 @@ export function AttachmentsSection({
             ارفع ملفاً (PDF, Word, صورة) بحد أقصى 15 ميغابايت
           </p>
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={() => fileInputRef.current?.click()}
@@ -221,6 +274,7 @@ export function AttachmentsSection({
 
               {canDelete(att) && (
                 <button
+                  type="button"
                   onClick={() => setConfirmDeleteId(att.id)}
                   disabled={deletingId === att.id}
                   className="shrink-0 p-2 rounded-md text-[#9AA3B2] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors opacity-0 group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 max-md:opacity-100"
@@ -249,8 +303,9 @@ export function AttachmentsSection({
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-3 justify-end">
-            <Button variant="outline" size="sm" onClick={() => setConfirmDeleteId(null)}>تراجع</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setConfirmDeleteId(null)}>تراجع</Button>
             <Button
+              type="button"
               variant="destructive"
               size="sm"
               disabled={!!deletingId}

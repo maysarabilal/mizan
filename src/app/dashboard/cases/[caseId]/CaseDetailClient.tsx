@@ -25,12 +25,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { SessionDialog } from '@/app/dashboard/sessions/SessionDialog'
 import { deleteSessionAction } from '@/lib/actions/sessions'
-import { getCaseAttachments, uploadCaseAttachment, deleteCaseAttachment } from '@/lib/actions/attachments'
+import { getCaseAttachments, deleteCaseAttachment } from '@/lib/actions/attachments'
 import { AttachmentsSection } from '@/components/attachments/AttachmentsSection'
+import { CaseFinancialTab } from './CaseFinancialTab'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }: { caseData: any, sessions: any[], currentUserId: string, userRole: string }) {
+export function CaseDetailClient({ caseData, sessions, currentUserId, userRole, canManageFees = false }: { caseData: any, sessions: any[], currentUserId: string, userRole: string, canManageFees?: boolean }) {
   const router = useRouter()
   const [addSessionOpen, setAddSessionOpen] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,12 +76,21 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
 
   const getSessionStatusBadge = (outcome: string) => {
     switch (outcome) {
+      case 'completed':
       case 'مكتملة':
         return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#16A34A] text-white">مكتملة</span>
+      case 'postponed':
       case 'مؤجلة':
         return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#FFEDD5] text-[#C2410C]">مؤجلة</span>
+      case 'cancelled':
+      case 'ملغاة':
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">ملغاة</span>
+      case 'scheduled':
+      case 'مجدولة':
       default:
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#E0F2FE] text-[#0369A1]">{outcome || 'مجدولة'}</span>
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#E0F2FE] text-[#0369A1]">
+          {outcome === 'scheduled' ? 'مجدولة' : (outcome || 'مجدولة')}
+        </span>
     }
   }
 
@@ -91,7 +101,7 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
   const assignedLawyer = caseData.profiles?.full_name || '—'
 
   return (
-    <div className="flex flex-col gap-6 p-8 font-[Inter]">
+    <div className="flex flex-col gap-6 px-4 py-5 md:p-8 font-[Inter]">
       {/* Back Link */}
       <div className="pb-2">
         <Link
@@ -104,10 +114,10 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
       </div>
 
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+      <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
-          <h1 className="text-[28px] font-bold leading-tight text-[#0F1724]">{caseData.title}</h1>
-          <div className="flex items-center flex-wrap gap-3">
+          <h1 className="text-xl md:text-[28px] font-bold leading-tight text-[#0F1724]">{caseData.title}</h1>
+          <div className="flex items-center flex-wrap gap-2">
             {caseData.case_number && (
               <span className="px-2 py-1 rounded text-xs font-semibold bg-[#F3F4F6] text-[#9AA3B2]">
                 {caseData.case_number}
@@ -121,29 +131,31 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          {/* PLACEHOLDER — export feature not yet implemented */}
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
-            variant="outline"
-            disabled
-            title="قريباً — ميزة تصدير القضية قيد التطوير"
-            className="flex items-center gap-2 border-black/10 text-[#0F1724] font-semibold opacity-60 cursor-not-allowed"
-          >
-            <Download className="h-4 w-4" />
-            تصدير القضية
-          </Button>
-          <Button
-            className="flex items-center gap-2 bg-[#1A2744] hover:bg-[#1A2744]/90 text-white font-semibold"
+            type="button"
+            className="flex items-center gap-2 bg-[#1A2744] hover:bg-[#1A2744]/90 text-white font-semibold flex-1 sm:flex-none justify-center"
             onClick={() => setAddSessionOpen(true)}
           >
             <Plus className="h-4 w-4" />
             إضافة جلسة
           </Button>
+          {/* PLACEHOLDER — export feature not yet implemented */}
+          <Button
+            type="button"
+            variant="outline"
+            disabled
+            title="قريباً — ميزة تصدير القضية قيد التطوير"
+            className="flex items-center gap-2 border-black/10 text-[#0F1724] font-semibold opacity-60 cursor-not-allowed flex-1 sm:flex-none justify-center"
+          >
+            <Download className="h-4 w-4" />
+            تصدير
+          </Button>
         </div>
       </div>
 
       {/* Top Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Case Information Card */}
         <div className="lg:col-span-2 bg-white border border-black/[0.08] rounded-lg overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.08]">
@@ -151,7 +163,7 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
             <Edit className="h-[18px] w-[18px] text-[#9AA3B2]" />
           </div>
           <div className="p-6 flex flex-col gap-8">
-            <div className="grid grid-cols-3 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
               <div className="flex flex-col gap-1.5">
                 <span className="text-[13px] font-medium text-[#9AA3B2]">تاريخ التسجيل</span>
                 <span className="text-[15px] font-semibold text-[#0F1724]">
@@ -176,6 +188,12 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
                 <span className="text-[13px] font-medium text-[#9AA3B2]">نوع القضية</span>
                 <span className="text-[15px] font-semibold text-[#0F1724]">{caseData.case_type}</span>
               </div>
+              {caseData.opposing_party && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[13px] font-medium text-[#9AA3B2]">الخصم (الطرف الآخر)</span>
+                  <span className="text-[15px] font-semibold text-[#0F1724]">{caseData.opposing_party}</span>
+                </div>
+              )}
               <div className="flex flex-col gap-1.5">
                 <span className="text-[13px] font-medium text-[#9AA3B2]">آخر تحديث</span>
                 <span className="text-[15px] font-semibold text-[#0F1724]">
@@ -259,8 +277,8 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
 
       {/* Tabs Panel */}
       <div className="bg-white border border-black/[0.08] rounded-lg overflow-hidden">
-        <Tabs defaultValue="sessions">
-          <TabsList className="flex w-full h-auto p-0 bg-transparent border-b border-black/[0.08] rounded-none justify-start gap-0">
+        <Tabs defaultValue="sessions" dir="rtl">
+          <TabsList className="flex w-full h-auto p-0 bg-transparent border-b border-black/[0.08] rounded-none justify-start gap-0 overflow-x-auto scrollbar-hide">
             <TabsTrigger
               value="sessions"
               className="flex items-center gap-2 px-6 py-4 rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A2744] data-[state=active]:text-[#1A2744] data-[state=inactive]:text-[#9AA3B2] font-medium text-sm bg-transparent shadow-none"
@@ -289,12 +307,9 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
               <CheckSquare className="h-4 w-4" />
               المهام
             </TabsTrigger>
-            {/* PLACEHOLDER — Expenses feature not implemented */}
             <TabsTrigger
               value="expenses"
-              disabled
-              title="قريباً — ميزة تتبع المصاريف قيد التطوير"
-              className="flex items-center gap-2 px-6 py-4 rounded-none border-b-2 border-transparent data-[state=inactive]:text-[#9AA3B2] font-medium text-sm bg-transparent shadow-none opacity-60 cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-4 rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A2744] data-[state=active]:text-[#1A2744] data-[state=inactive]:text-[#9AA3B2] font-medium text-sm bg-transparent shadow-none"
             >
               <DollarSign className="h-4 w-4" />
               المصاريف
@@ -304,93 +319,93 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
           {/* Sessions Tab */}
           <TabsContent value="sessions" className="m-0">
             {sessions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-16 text-center">
+              <div className="flex flex-col items-center justify-center p-12 text-center">
                 <Calendar className="h-10 w-10 text-muted-foreground opacity-20 mb-3" />
                 <p className="font-medium text-[#0F1724]">لا توجد جلسات مسجلة</p>
                 <p className="text-sm text-[#9AA3B2] mt-1">اضغط على "إضافة جلسة" لتسجيل أول جلسة</p>
               </div>
             ) : (
               <>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-[#F3F4F6] hover:bg-[#F3F4F6]">
-                      <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6">التاريخ والوقت</TableHead>
-                      <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6">نوع الجلسة</TableHead>
-                      <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6">المحكمة</TableHead>
-                      <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6">القاعة</TableHead>
-                      <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6">الحالة</TableHead>
-                      <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6 text-end">الإجراءات</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sessions.map((s) => (
-                      <TableRow key={s.id} className="border-b border-black/[0.08] hover:bg-gray-50/50">
-                        <TableCell className="py-4 px-6">
-                          <div className="flex flex-col gap-1">
-                            <span className="font-medium text-[14px] text-[#0F1724]">
-                              {format(new Date(s.session_date), 'dd MMM yyyy', { locale: ar })}
-                            </span>
-                            {s.session_time && (
-                              <span className="text-[12px] text-[#9AA3B2]">{s.session_time}</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 font-medium text-[14px] text-[#0F1724]">
-                          {s.session_type || '—'}
-                        </TableCell>
-                        <TableCell className="py-4 px-6 text-[14px] text-[#0F1724]">
-                          {s.court || '—'}
-                        </TableCell>
-                        <TableCell className="py-4 px-6 text-[14px] text-[#0F1724]">
-                          {s.hall || '—'}
-                        </TableCell>
-                        <TableCell className="py-4 px-6">
-                          {getSessionStatusBadge(s.outcome)}
-                        </TableCell>
-                        <TableCell className="py-4 px-6">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-[#9AA3B2] hover:text-[#1A2744] hover:bg-slate-100"
-                              onClick={() => setEditingSession(s)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 rounded-md text-[#9AA3B2] hover:bg-slate-100 hover:text-[#1A2744] transition-colors">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => setEditingSession(s)}>
-                                  <Edit className="me-2 h-4 w-4" /> تعديل
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive focus:bg-red-50"
-                                  onClick={() => setDeletingSessionId(s.id)}
-                                >
-                                  <Trash2 className="me-2 h-4 w-4" /> حذف
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
+                {/* Desktop Table */}
+                <div className="hidden sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-[#F3F4F6] hover:bg-[#F3F4F6]">
+                        <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6">التاريخ والوقت</TableHead>
+                        <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6">نوع الجلسة</TableHead>
+                        <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6">المحكمة</TableHead>
+                        <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6">القاعة</TableHead>
+                        <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6">الحالة</TableHead>
+                        <TableHead className="text-[#9AA3B2] font-medium text-sm py-4 px-6 text-end">الإجراءات</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {sessions.map((s) => (
+                        <TableRow key={s.id} className="border-b border-black/[0.08] hover:bg-gray-50/50">
+                          <TableCell className="py-4 px-6">
+                            <div className="flex flex-col gap-1">
+                              <span className="font-medium text-[14px] text-[#0F1724]">
+                                {format(new Date(s.session_date), 'dd MMM yyyy', { locale: ar })}
+                              </span>
+                              {s.session_time && (
+                                <span className="text-[12px] text-[#9AA3B2]">{s.session_time}</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-4 px-6 font-medium text-[14px] text-[#0F1724]">{s.session_type || '—'}</TableCell>
+                          <TableCell className="py-4 px-6 text-[14px] text-[#0F1724]">{s.court || '—'}</TableCell>
+                          <TableCell className="py-4 px-6 text-[14px] text-[#0F1724]">{s.hall || '—'}</TableCell>
+                          <TableCell className="py-4 px-6">{getSessionStatusBadge(s.outcome)}</TableCell>
+                          <TableCell className="py-4 px-6">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-[#9AA3B2] hover:text-[#1A2744] hover:bg-slate-100" onClick={() => setEditingSession(s)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 rounded-md text-[#9AA3B2] hover:bg-slate-100 hover:text-[#1A2744] transition-colors">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => setEditingSession(s)}><Edit className="me-2 h-4 w-4" /> تعديل</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-red-50" onClick={() => setDeletingSessionId(s.id)}><Trash2 className="me-2 h-4 w-4" /> حذف</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
 
-                {/* PLACEHOLDER — sessions pagination not implemented */}
-                <div className="flex justify-center items-center p-4 border-t border-black/[0.08]">
-                  <Button
-                    variant="outline"
-                    disabled
-                    title="قريباً — تحميل المزيد سيُفعَّل عند تطبيق pagination للجلسات"
-                    className="w-[300px] flex items-center gap-2 border-black/10 text-[#0F1724] opacity-60 cursor-not-allowed"
-                  >
-                    <Plus className="h-4 w-4" />
-                    تحميل المزيد من الجلسات
-                  </Button>
+                {/* Mobile Cards */}
+                <div className="block sm:hidden divide-y divide-black/[0.06]">
+                  {sessions.map((s) => (
+                    <div key={s.id} className="p-4 flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-semibold text-sm text-[#0F1724]">
+                            {format(new Date(s.session_date), 'dd MMM yyyy', { locale: ar })}
+                          </span>
+                          {s.session_time && <span className="text-xs text-[#9AA3B2]" dir="ltr">{s.session_time.substring(0,5)}</span>}
+                        </div>
+                        {getSessionStatusBadge(s.outcome)}
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#5A6480]">
+                        {s.session_type && <span>{s.session_type}</span>}
+                        {s.court && <span>{s.court}</span>}
+                        {s.hall && <span>{s.hall}</span>}
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button onClick={() => setEditingSession(s)} className="flex items-center gap-1.5 text-xs text-[#8B939A] hover:text-[#C9A84C]">
+                          <Edit className="h-3.5 w-3.5" /> تعديل
+                        </button>
+                        <button onClick={() => setDeletingSessionId(s.id)} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700">
+                          <Trash2 className="h-3.5 w-3.5" /> حذف
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </>
             )}
@@ -403,7 +418,6 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
               currentUserId={currentUserId}
               userRole={userRole}
               fetchAttachments={getCaseAttachments}
-              uploadAttachment={uploadCaseAttachment}
               deleteAttachment={deleteCaseAttachment}
             />
           </TabsContent>
@@ -417,11 +431,11 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
           </TabsContent>
 
           <TabsContent value="expenses" className="m-0">
-            <div className="flex flex-col items-center justify-center p-16 text-center">
-              <DollarSign className="h-10 w-10 text-muted-foreground opacity-20 mb-3" />
-              <p className="font-medium text-[#0F1724]">لا توجد مصاريف</p>
-              <p className="text-sm text-[#9AA3B2] mt-1">ميزة تتبع المصاريف قيد التطوير</p>
-            </div>
+            <CaseFinancialTab
+              caseId={caseData.id}
+              userRole={userRole}
+              canManageFees={canManageFees}
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -450,8 +464,8 @@ export function CaseDetailClient({ caseData, sessions, currentUserId, userRole }
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-4 justify-end">
-            <Button variant="outline" onClick={() => setDeletingSessionId(null)} disabled={isDeletingSession}>تراجع</Button>
-            <Button variant="destructive" onClick={handleDeleteSession} disabled={isDeletingSession}>
+            <Button type="button" variant="outline" onClick={() => setDeletingSessionId(null)} disabled={isDeletingSession}>تراجع</Button>
+            <Button type="button" variant="destructive" onClick={handleDeleteSession} disabled={isDeletingSession}>
               {isDeletingSession ? 'جاري الحذف...' : 'حذف الجلسة'}
             </Button>
           </div>

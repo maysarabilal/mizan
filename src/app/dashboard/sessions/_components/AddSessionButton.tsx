@@ -10,9 +10,10 @@ type CaseRow = Database['public']['Tables']['cases']['Row']
 
 interface AddSessionButtonProps {
   cases: CaseRow[]
+  workingDays: string[]
 }
 
-export function AddSessionButton({ cases }: AddSessionButtonProps) {
+export function AddSessionButton({ cases, workingDays }: AddSessionButtonProps) {
   const [isAddOpen, setIsAddOpen] = useState(false)
 
   return (
@@ -32,6 +33,7 @@ export function AddSessionButton({ cases }: AddSessionButtonProps) {
         }}
         sessionItem={null}
         cases={cases}
+        workingDays={workingDays}
       />
     </>
   )

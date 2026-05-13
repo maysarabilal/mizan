@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Clock, User, Briefcase, AlertTriangle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, User, Briefcase, AlertTriangle, Gavel } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import { PRIORITY_LABELS, STATUS_LABELS, AppPriority, AppStatus } from '@/lib/co
 
 type TaskRowExt = Database['public']['Tables']['tasks']['Row'] & {
   cases?: { title: string } | null
+  sessions?: { session_date: string; court: string | null } | null
   assigned_user?: { full_name: string } | null
 }
 type CaseRow = Database['public']['Tables']['cases']['Row']
@@ -48,10 +49,11 @@ function getTaskBg(task: TaskRowExt): { bg: string; text: string } {
 interface TaskCalendarViewProps {
   tasks: TaskRowExt[]
   cases: CaseRow[]
+  sessions: Database['public']['Tables']['sessions']['Row'][]
   teamMembers: TeamMember[]
 }
 
-export function TaskCalendarView({ tasks, cases, teamMembers }: TaskCalendarViewProps) {
+export function TaskCalendarView({ tasks, cases, sessions, teamMembers }: TaskCalendarViewProps) {
   const router = useRouter()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -267,6 +269,15 @@ export function TaskCalendarView({ tasks, cases, teamMembers }: TaskCalendarView
                           <span>{task.assigned_user.full_name}</span>
                         </div>
                       )}
+                      {task.sessions && (
+                        <div className="flex items-center gap-1.5 text-[13px] text-amber-600 font-medium">
+                          <Gavel className="h-3.5 w-3.5" />
+                          <span className="line-clamp-1">
+                            جلسة: {format(new Date(task.sessions.session_date), 'd MMM', { locale: ar })}
+                            {task.sessions.court && ` — ${task.sessions.court}`}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Priority badge + status pill */}
@@ -302,6 +313,7 @@ export function TaskCalendarView({ tasks, cases, teamMembers }: TaskCalendarView
         onOpenChange={(open) => { if (!open) setEditingTask(null) }}
         taskItem={editingTask}
         cases={cases}
+        sessions={sessions}
         teamMembers={teamMembers}
       />
     </>

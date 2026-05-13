@@ -14,7 +14,9 @@ export async function getClients(searchQuery?: string) {
   const supabase = await createClient()
   
   // Note: RLS automatically filters by current_office_id()
-  let query = supabase.from('clients').select('*').order('created_at', { ascending: false })
+  let query = supabase.from('clients')
+    .select('id, name, phone, email, id_number, address, notes, avatar_url, office_id, created_at, updated_at')
+    .order('created_at', { ascending: false })
   
   if (searchQuery) {
     query = query.or(`name.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,id_number.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
@@ -38,7 +40,7 @@ export async function getClientById(clientId: string) {
 
   const { data, error } = await supabase
     .from('clients')
-    .select('*')
+    .select('id, name, phone, email, id_number, address, notes, avatar_url, office_id, created_at, updated_at')
     .eq('id', clientId)
     .single()
 

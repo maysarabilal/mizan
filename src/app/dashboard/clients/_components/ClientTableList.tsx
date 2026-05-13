@@ -48,7 +48,8 @@ export function ClientTableList({ clients }: { clients: Client[] }) {
 
   return (
     <>
-      <div className="bg-white border border-black/[0.08] rounded-xl overflow-hidden shadow-sm">
+      {/* Desktop Table */}
+      <div className="hidden md:block bg-white border border-black/[0.08] rounded-xl overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="bg-[#F8F9FB] hover:bg-[#F8F9FB] border-b border-black/[0.08]">
@@ -176,6 +177,73 @@ export function ClientTableList({ clients }: { clients: Client[] }) {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="md:hidden flex flex-col gap-4">
+        {clients.length === 0 ? (
+          <div className="text-center p-8 text-[#9AA3B2] bg-white rounded-xl border border-black/[0.08] text-[14px]">
+            لا يوجد عملاء مضافين بعد
+          </div>
+        ) : (
+          clients.map((client) => (
+            <div 
+              key={client.id} 
+              className="bg-white border border-black/[0.08] rounded-xl p-4 flex flex-col gap-3 relative shadow-sm"
+              onClick={() => router.push(`/dashboard/clients/${client.id}`)}
+            >
+              <div className="flex justify-between items-start gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#F0EAD6] flex items-center justify-center shrink-0 overflow-hidden">
+                    {client.avatar_url ? (
+                      <Image src={client.avatar_url} alt={client.name} width={40} height={40} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[13px] font-bold text-[#3B3A33]">{getInitials(client.name)}</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[#0F1724] text-base">{client.name}</span>
+                    <span className="text-xs text-[#9AA3B2]">{format(new Date(client.created_at), 'd MMMM yyyy', { locale: ar })}</span>
+                  </div>
+                </div>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md bg-[#F4F5F7] text-[#1A2744]">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" dir="rtl">
+                      <DropdownMenuItem onClick={() => setEditingClient(client)}>
+                        <Pencil className="me-2 h-4 w-4" /> تعديل
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setDeletingId(client.id)} className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                        <Trash2 className="me-2 h-4 w-4" /> حذف
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 mt-1 pt-3 border-t border-black/[0.04]">
+                {client.phone && (
+                  <div className="flex items-center gap-2 text-[13px] text-[#0F1724]">
+                    <div className="w-6 h-6 flex items-center justify-center bg-[#F4F5F7] rounded shrink-0">
+                      <Phone className="h-3.5 w-3.5 text-[#9AA3B2]" />
+                    </div>
+                    <span dir="ltr" className="font-medium text-right w-full">{client.phone}</span>
+                  </div>
+                )}
+                {client.email && (
+                  <div className="flex items-center gap-2 text-[13px] text-[#0F1724]">
+                    <div className="w-6 h-6 flex items-center justify-center bg-[#F4F5F7] rounded shrink-0">
+                      <Mail className="h-3.5 w-3.5 text-[#9AA3B2]" />
+                    </div>
+                    <span className="truncate">{client.email}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Edit Dialog */}

@@ -6,7 +6,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { FileCheck, FilePlus, FileUp } from 'lucide-react'
+import { FileCheck, FilePlus, FileUp, AlertCircle } from 'lucide-react'
+import { getDay } from 'date-fns'
 
 import { sessionSchema } from '@/lib/validations/sessions'
 import { createSessionAction, updateSessionAction } from '@/lib/actions/sessions'
@@ -30,6 +31,7 @@ interface SessionDialogProps {
   sessionItem?: SessionRow | null
   cases: CaseRow[]
   preselectedCaseId?: string
+  workingDays?: string[]
 }
 
 const SESSION_TYPES = ['مرافعة', 'نطق بالحكم', 'استجواب', 'تقديم مستندات', 'خبرة', 'أخرى']
@@ -42,7 +44,9 @@ const statusMap: Record<string, string> = {
   'cancelled': 'ملغاة'
 }
 
-export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselectedCaseId }: SessionDialogProps) {
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
+export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselectedCaseId, workingDays = [] }: SessionDialogProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isEditing = !!sessionItem
@@ -60,6 +64,14 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
       notes: sessionItem?.notes || '',
     },
   })
+
+  // Watch date for working days warning
+  const watchedDate = form.watch('session_date')
+  const isNonWorkingDay = watchedDate && workingDays.length > 0 && (() => {
+    const date = new Date(watchedDate)
+    const dayIndex = getDay(date)
+    return !workingDays.includes(DAY_NAMES[dayIndex])
+  })()
 
   useEffect(() => {
     form.reset({
@@ -164,12 +176,18 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
                         <Input 
                           type="date" 
                           dir="ltr"
-                          className="text-right rtl:text-left h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700"
+                          className={`text-right rtl:text-left h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700 ${isNonWorkingDay ? 'border-amber-500 focus-visible:ring-amber-500' : ''}`}
                           disabled={isSubmitting} 
                           {...field} 
                           value={field.value || ''}
                         />
                       </FormControl>
+                      {isNonWorkingDay && (
+                        <div className="flex items-center gap-2 mt-1.5 text-amber-600 dark:text-amber-400">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          <span className="text-[11px] font-medium leading-none">تنبيه: هذا اليوم خارج أيام العمل الرسمية المحددة للمكتب.</span>
+                        </div>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -227,7 +245,9 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
                       <Select disabled={isSubmitting} onValueChange={field.onChange} value={field.value} >
                         <FormControl>
                           <SelectTrigger className="h-10 bg-slate-50 dark:bg-zinc-900 border-black/8 dark:border-zinc-700">
-                            <SelectValue />
+                            <SelectValue>
+                              {field.value ? statusMap[field.value] : "حالة الجلسة"}
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -298,40 +318,11 @@ export function SessionDialog({ open, onOpenChange, sessionItem, cases, preselec
               {/* Divider */}
               <div className="border-t border-dashed border-black/8 dark:border-zinc-800" />
 
-              {/* Attachments — UI Placeholder */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[13px] font-semibold text-[#0F1724] dark:text-zinc-200">المرفقات والمستندات</span>
-                  <Badge variant="secondary" className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-[10px]">
-                    قريباً
-                  </Badge>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled
-                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
-                    title="قريباً — إرفاق مذكرة"
-                  >
-                    <FileCheck className="h-3.5 w-3.5" /> إرفاق مذكرة
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
-                    title="قريباً — إرفاق طلب"
-                  >
-                    <FilePlus className="h-3.5 w-3.5" /> إرفاق طلب
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="flex items-center gap-2 px-3.5 py-2 border border-dashed border-black/15 dark:border-zinc-700 rounded-md text-xs text-[#8B939A] opacity-60 cursor-not-allowed"
-                    title="قريباً — إرفاق مستند"
-                  >
-                    <FileUp className="h-3.5 w-3.5" /> إرفاق مستند
-                  </button>
-                </div>
+              {/* Attachments — Info Note */}
+              <div className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/40 px-4 py-3">
+                <span className="text-sm text-muted-foreground">
+                  📎 لرفع المرفقات والمستندات، توجّه إلى صفحة تفاصيل الجلسة
+                </span>
               </div>
             </form>
           </Form>

@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/types/actions'
 import { requireActiveSubscription } from '@/lib/actions/subscription'
+import { sendPushToUser } from '@/lib/utils/sendPushToUser'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function getCases(searchQuery?: string) {
   const subError = await requireActiveSubscription()
@@ -68,6 +70,7 @@ export async function createCaseAction(values: z.infer<typeof caseSchema>): Prom
     litigation_degree: result.data.litigation_degree || null,
     assigned_to: result.data.assigned_to || null,
     notes: result.data.notes || null,
+    opposing_party: result.data.opposing_party || null,
   }).select('id').single()
 
   if (error) {
@@ -82,13 +85,22 @@ export async function createCaseAction(values: z.infer<typeof caseSchema>): Prom
       const shouldNotify = await shouldSendNotification(memberData, 'session_reminders')
 
       if (shouldNotify) {
-        await supabase.from('notifications').insert({
+        // Use admin client — inserting notification for another user (RLS blocks regular INSERT)
+        const adminDb = createAdminClient()
+        await adminDb.from('notifications').insert({
           office_id: memberData,
           user_id: result.data.assigned_to,
           type: 'system',
           title: 'قضية جديدة مُسندة إليك',
           body: `تم إسناد القضية "${result.data.title}" إليك.`,
           related_entity_id: newCase?.id || undefined,
+        })
+
+        // Fire-and-forget push notification
+        sendPushToUser(result.data.assigned_to, {
+          title: 'قضية جديدة مُسندة إليك',
+          body: `تم إسناد القضية "${result.data.title}" إليك.`,
+          url: `/dashboard/cases/${newCase?.id || ''}`,
         })
       }
     } catch (notifErr) {
@@ -131,6 +143,7 @@ export async function updateCaseAction(id: string, values: z.infer<typeof caseSc
       litigation_degree: result.data.litigation_degree || null,
       assigned_to: result.data.assigned_to || null,
       notes: result.data.notes || null,
+      opposing_party: result.data.opposing_party || null,
     })
     .eq('id', id)
 
@@ -149,13 +162,22 @@ export async function updateCaseAction(id: string, values: z.infer<typeof caseSc
       const shouldNotify = await shouldSendNotification(existingCase.office_id, 'session_reminders')
 
       if (shouldNotify) {
-        await supabase.from('notifications').insert({
+        // Use admin client — inserting notification for another user (RLS blocks regular INSERT)
+        const adminDb = createAdminClient()
+        await adminDb.from('notifications').insert({
           office_id: existingCase.office_id,
           user_id: newAssignee,
           type: 'system',
           title: 'قضية مُسندة إليك',
           body: `تم إسناد القضية "${result.data.title}" إليك.`,
           related_entity_id: id,
+        })
+
+        // Fire-and-forget push notification
+        sendPushToUser(newAssignee, {
+          title: 'قضية مُسندة إليك',
+          body: `تم إسناد القضية "${result.data.title}" إليك.`,
+          url: `/dashboard/cases/${id}`,
         })
       }
     } catch (notifErr) {
@@ -188,4 +210,41 @@ export async function deleteCaseAction(id: string): Promise<ActionResult> {
 
   revalidatePath('/dashboard/cases')
   return { data: null, error: null }
+}
+
+export async function checkConflictOfInterest(
+  opposingParty: string,
+  officeId: string
+): Promise<ActionResult<{ hasConflict: boolean; matchedClient?: { id: string; name: string } }>> {
+  if (!opposingParty || opposingParty.trim().length < 2) {
+    return { data: { hasConflict: false }, error: null }
+  }
+
+  const supabase = await createClient()
+
+  // Find if opposing party is an existing client in the same office
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id, name')
+    .eq('office_id', officeId)
+    .ilike('name', `%${opposingParty.trim()}%`)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Error checking conflict of interest:', error)
+    return { data: null, error: 'فشل في التحقق من تضارب المصالح' }
+  }
+
+  if (data) {
+    return {
+      data: {
+        hasConflict: true,
+        matchedClient: { id: data.id, name: data.name },
+      },
+      error: null,
+    }
+  }
+
+  return { data: { hasConflict: false }, error: null }
 }

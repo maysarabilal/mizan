@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/types/actions'
 import { requireActiveSubscription } from '@/lib/actions/subscription'
+import { sendPushToUser } from '@/lib/utils/sendPushToUser'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function getSessions() {
   const subError = await requireActiveSubscription()
@@ -94,13 +96,22 @@ export async function createSessionAction(values: z.infer<typeof sessionSchema>)
         .single()
 
       if (caseData?.assigned_to && caseData.assigned_to !== user.id) {
-        await supabase.from('notifications').insert({
+        // Use admin client — inserting notification for another user (RLS blocks regular INSERT)
+        const adminDb = createAdminClient()
+        await adminDb.from('notifications').insert({
           office_id: member.office_id,
           user_id: caseData.assigned_to,
           type: 'session',
           title: 'جلسة جديدة',
           body: `تمت إضافة جلسة جديدة بتاريخ ${result.data.session_date} للقضية "${caseData.title}".`,
           related_entity_id: newSession?.id || undefined,
+        })
+
+        // Fire-and-forget push notification
+        sendPushToUser(caseData.assigned_to, {
+          title: 'جلسة جديدة',
+          body: `تمت إضافة جلسة جديدة بتاريخ ${result.data.session_date} للقضية "${caseData.title}".`,
+          url: `/dashboard/sessions/${newSession?.id || ''}`,
         })
       }
     }
@@ -143,6 +154,7 @@ export async function updateSessionAction(id: string, values: z.infer<typeof ses
   }
 
   revalidatePath('/dashboard/sessions')
+  revalidatePath('/dashboard/sessions/[sessionId]', 'page')
   revalidatePath(`/dashboard/cases/${result.data.case_id}`)
   return { data: null, error: null }
 }
@@ -167,6 +179,7 @@ export async function deleteSessionAction(id: string, caseId?: string): Promise<
   }
 
   revalidatePath('/dashboard/sessions')
+  revalidatePath('/dashboard/sessions/[sessionId]', 'page')
   if (caseId) revalidatePath(`/dashboard/cases/${caseId}`)
   
   return { data: null, error: null }

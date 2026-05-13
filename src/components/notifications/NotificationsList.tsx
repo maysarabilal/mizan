@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -8,6 +8,7 @@ import { Bell, Calendar, CheckSquare, CreditCard, Info, Check, CheckCircle2 } fr
 
 import { Database } from '@/types/database'
 import { markAsReadAction, markAllAsReadAction } from '@/lib/actions/notifications'
+import { createClient } from '@/lib/supabase/browser'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -29,10 +30,50 @@ const COLOR_MAP: Record<string, string> = {
   'system': 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
 }
 
-export function NotificationsList({ initialData }: { initialData: NotificationRow[] }) {
+export function NotificationsList({
+  initialData,
+  userId,
+}: {
+  initialData: NotificationRow[]
+  userId: string
+}) {
   const [notifications, setNotifications] = useState<NotificationRow[]>(initialData)
   const [isProcessing, setIsProcessing] = useState(false)
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
+
+  // Real-time: prepend new notifications instantly without page refresh
+  useEffect(() => {
+    if (!userId) return
+
+    const supabase = createClient()
+
+    const channel = supabase
+      .channel('notifications-list')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const newNotification = payload.new as NotificationRow
+          // Prepend to top — no page refresh needed
+          setNotifications((prev) => [newNotification, ...prev])
+          // Also show an in-app toast
+          toast(newNotification.title, {
+            description: newNotification.body,
+            duration: 5000,
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId])
 
   const displayedNotifications = notifications.filter(n => filter === 'all' ? true : !n.is_read)
 

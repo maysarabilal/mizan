@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireActiveSubscription } from '@/lib/actions/subscription'
 import { getCases } from '@/lib/actions/cases'
+import { getOfficeConfig } from '@/lib/actions/settings'
 import { Badge } from '@/components/ui/badge'
 import { SessionFilters } from './_components/SessionFilters'
 import { SessionTableList } from './_components/SessionTableList'
@@ -12,7 +13,6 @@ import { SessionCalendarView } from './_components/SessionCalendarView'
 import SessionsLoading from './loading'
 import { SessionViewToggle } from './_components/SessionViewToggle'
 
-export const dynamic = 'force-dynamic'
 
 interface SearchParams {
   q?: string
@@ -46,7 +46,7 @@ async function SessionsPageContent({ searchParams }: { searchParams: Promise<Sea
   const view = params.view === 'calendar' ? 'calendar' : 'list'
 
   // Use RPC for search (supports cross-table search: client name, lawyer name, case title)
-  const [rpcResult, { data: cases }, distinctTypesRes, distinctCourtsRes, calendarResult] = await Promise.all([
+  const [rpcResult, { data: cases }, distinctTypesRes, distinctCourtsRes, calendarResult, officeRes] = await Promise.all([
     supabase.rpc('search_sessions', {
       search_term: q || null,
       filter_status: status,
@@ -67,6 +67,7 @@ async function SessionsPageContent({ searchParams }: { searchParams: Promise<Sea
           .select(`*, cases (title, clients(name), profiles!cases_assigned_to_fkey(full_name))`)
           .order('session_date', { ascending: true })
       : Promise.resolve({ data: null, error: null }),
+    getOfficeConfig(),
   ])
 
   if (rpcResult.error) console.error('Error fetching sessions:', rpcResult.error)
@@ -112,6 +113,8 @@ async function SessionsPageContent({ searchParams }: { searchParams: Promise<Sea
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const calendarSessions = (calendarResult.data || []) as any[]
 
+  const workingDays = (officeRes.data?.working_days as string[]) || ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday']
+
   return (
     <div className="flex flex-col gap-6 w-full animate-in fade-in duration-300">
       {/* Header */}
@@ -123,7 +126,7 @@ async function SessionsPageContent({ searchParams }: { searchParams: Promise<Sea
               {totalSessions}
             </Badge>
           </div>
-          <AddSessionButton cases={cases || []} />
+          <AddSessionButton cases={cases || []} workingDays={workingDays} />
         </div>
         <p className="text-sm text-muted-foreground">
           جدولة الجلسات، مواعيد المحاكم، وتتبع مسارات القضايا بشكل يومي أو شهري
@@ -140,13 +143,13 @@ async function SessionsPageContent({ searchParams }: { searchParams: Promise<Sea
 
           {/* Table + Pagination */}
           <div className="flex flex-col rounded-lg shadow-sm border border-black/8 dark:border-zinc-800 overflow-hidden">
-            <SessionTableList sessions={sessions} cases={cases || []} />
+            <SessionTableList sessions={sessions} cases={cases || []} workingDays={workingDays} />
             <SessionPagination total={totalSessions} />
           </div>
         </>
       ) : (
         /* Calendar View */
-        <SessionCalendarView sessions={calendarSessions} cases={cases || []} />
+        <SessionCalendarView sessions={calendarSessions} cases={cases || []} workingDays={workingDays} />
       )}
     </div>
   )

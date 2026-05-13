@@ -27,6 +27,244 @@ All AI Agents MUST read this file before performing any complex modification to:
 
 ---
 
+## [2026-05-09] — REFACTOR: Global Mobile Responsiveness — Full QA Pass (10 Pages)
+
+**Description**: Performed a complete mobile QA audit and fix pass at 375px viewport across all 10 major dashboard pages. Goal: zero horizontal overflow, all data as cards on mobile, all forms full-width, navigation correct.
+
+**Pages Audited & Fixed**:
+| Page | Status | Changes |
+|---|---|---|
+| `/dashboard` (Home) | ✅ Already correct | MobileDashboard existed with KPI cards |
+| `/dashboard/cases` | ✅ Already correct | Cards (`hidden md:block`) from prev session |
+| `/dashboard/cases/[caseId]` | 🔧 Fixed | Responsive header, 2-col info grid, scrollable tabs, sessions table → cards on mobile |
+| `/dashboard/sessions` | ✅ Already correct | Cards view existed from prev session |
+| `/dashboard/sessions/[sessionId]` | ✅ Mostly correct | `grid-cols-2 md:grid-cols-4` already responsive |
+| `/dashboard/clients` | ✅ Already correct | Cards view existed from prev session |
+| `/dashboard/tasks` | ✅ Already correct | Cards view existed from prev session |
+| `/dashboard/finances` | 🔧 Fixed | Both tables converted to mobile cards using `hidden sm:block` / `block sm:hidden` pattern |
+| `/dashboard/settings` | 🔧 Fixed | Activity log table → mobile cards, save/cancel buttons full-width on mobile |
+| `/dashboard/profile` | 🔧 Fixed | Save button now full-width on mobile (`w-full md:w-auto`) |
+
+**Files Changed**:
+- `src/app/dashboard/cases/[caseId]/CaseDetailClient.tsx` — Responsive header stack, 2-col info grid, scrollable tabs, sessions cards on mobile
+- `src/app/dashboard/finances/FinancesClient.tsx` — Full rewrite with mobile card views for overdue + all cases
+- `src/app/dashboard/settings/SettingsClient.tsx` — Activity log cards on mobile, full-width save/cancel buttons
+- `src/app/dashboard/profile/ProfileForm.tsx` — Full-width save button on mobile
+
+**Build**: `npm run build` → **Exit code: 0** ✅ (0 TypeScript errors, all 30 routes compiled)
+
+**Regression Risk**: Low — all changes are purely additive (`hidden sm:block` + `block sm:hidden` CSS patterns). No business logic or server actions were modified. RTL and Arabic preserved throughout.
+
+---
+
+## [2026-05-09] — FEATURE: Push Notifications (Phase 3: Event Triggers)
+
+**Description**: Connected real system events to push notifications. When a notification is inserted in DB, a push is also sent to the user's subscribed browsers/devices.
+
+**Architecture**:
+- **`sendPushToUser(userId, payload)`** (`src/lib/utils/sendPushToUser.ts`): Server-side utility that fetches ALL `push_subscriptions` for a user, calls `/api/push/send` for each, and removes expired subscriptions (410/404). **Never throws** — push is best-effort.
+- **Pattern**: Called without `await` (fire-and-forget) immediately after `notifications.insert()` in each Server Action. This ensures push never blocks or breaks the main action flow.
+
+**Trigger Points (4 total)**:
+| Event | File | Who Gets Notified |
+|---|---|---|
+| New session created | `sessions.ts` | Assigned lawyer of the case |
+| New case assigned | `cases.ts` (create) | Assigned lawyer |
+| Case reassigned | `cases.ts` (update) | Newly assigned lawyer |
+| Task completed | `tasks.ts` (update) | Task creator or other party |
+
+**Environment**:
+- Added `NEXT_PUBLIC_APP_URL=http://localhost:3000` to `.env.local` (production: actual domain).
+
+**Test Endpoint** (temporary):
+- `GET /api/push/test?userId=<UUID>` — blocked in production. **Delete after testing**.
+
+**Files Created**:
+- `src/lib/utils/sendPushToUser.ts`
+- `src/app/api/push/test/route.ts` (temporary)
+
+**Files Modified**:
+- `src/lib/actions/sessions.ts`
+- `src/lib/actions/cases.ts`
+- `src/lib/actions/tasks.ts`
+- `.env.local`
+
+---
+
+## [2026-05-09] — FIX & DOC: Switch Component RTL Quirk
+
+**Description**: Fixed the `PushNotificationToggle` switch animation moving in the wrong direction in RTL interfaces.
+- **Root Cause**: `shadcn/ui` `Switch` component defaults to LTR logic for its sliding animation. When placed in an RTL environment (`<html dir="rtl">`), the CSS transforms (like `translateX`) move the thumb in the reverse visual direction.
+- **Prevention/Pattern**: Always wrap the `Switch` component in `<div dir="ltr">` to isolate its internal animation logic while maintaining its functional state. Example:
+```tsx
+<div dir="ltr">
+  <Switch checked={value} onCheckedChange={onChange} />
+</div>
+```
+
+**Files Modified**:
+- `src/components/notifications/PushNotificationToggle.tsx`
+- `DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-09] — FEATURE: Push Notifications (Phase 2: SW Registration & UI)
+
+**Description**: Implemented the UI and Service Worker registration for Push Notifications.
+- **Hook**: Created `usePushNotifications` hook to manage subscription status and interact with the Push Manager.
+- **UI Toggle**: Added `PushNotificationToggle` to the Settings page (Section 4: Notifications) using the existing `Switch` component. Included fallback UI for iOS Safari.
+- **Service Worker Registration**: Created `ServiceWorkerRegistrar` component and injected it into the dashboard layout to register `sw.js` for authenticated users.
+
+**Files Modified**:
+- `src/hooks/usePushNotifications.ts` (New)
+- `src/components/notifications/PushNotificationToggle.tsx` (New)
+- `src/app/dashboard/settings/SettingsClient.tsx`
+- `src/components/ServiceWorkerRegistrar.tsx` (New)
+- `src/app/dashboard/layout.tsx`
+
+---
+
+## [2026-05-09] — FEATURE: Push Notifications (Phase 1: Infrastructure)
+
+**Description**: Implemented the foundational infrastructure for Web Push Notifications.
+- **Dependencies**: Installed `web-push` and `@types/web-push`. Generated VAPID keys and added them to environment variables.
+- **Database schema**: Created the `push_subscriptions` table with RLS policies, linked to `profiles` and `offices`, and applied the migration via Supabase CLI. Manually updated `src/types/database.ts` to include the `push_subscriptions` type definitions and relationships.
+- **Service Worker**: Created `public/sw.js` to handle `push` and `notificationclick` events, with fallback UI options and proper URL routing.
+- **API & Actions**: Added a push sending endpoint at `api/push/send/route.ts` using `web-push.sendNotification`, and created Server Actions `savePushSubscription` and `removePushSubscription` in `notifications.ts`.
+- **Note**: UI registration of the Service Worker is deliberately deferred to Phase 2.
+
+**Files Modified**:
+- `package.json`
+- `.env.local`
+- `supabase/migrations/20260509000000_push_subscriptions.sql` (New)
+- `src/types/database.ts`
+- `public/sw.js` (New)
+- `src/app/api/push/send/route.ts` (New)
+- `src/lib/actions/notifications.ts`
+
+---
+
+## [2026-05-09] — FIX: Case UI Issues and Task Query Breakage
+
+**Description**: Resolved a critical issue where tasks would silently fail to fetch due to a query typo, and fixed missing/broken opposing party UI in the Case module.
+- **Conflict of Interest Warning**: Replaced `onBlur` logic in `CaseDialog` to directly use `e.target.value.trim()` to ensure immediate validation and warning toast display if a matching client name is found for `opposing_party`.
+- **Opposing Party Display**: Added `opposing_party` display into the Case Information grid in `CaseDetailClient.tsx` since it was previously missing despite being fetched in the `page.tsx` query.
+- **Task Query & Types Crash**: In a previous update linking tasks with sessions, `location` was used in `tasks.ts` query `sessions (session_date, location)`, causing Supabase to return a 400 Bad Request error since the column in DB is actually `court`. Changed all instances of `location` to `court` across `tasks.ts`, `page.tsx`, `TasksClient.tsx`, `TaskTable.tsx`, `TaskCalendarView.tsx`, and `TaskDialog.tsx` to restore tasks functionality and TypeScript type safety.
+
+**Files Modified**:
+- `src/app/dashboard/cases/CaseDialog.tsx`
+- `src/app/dashboard/cases/[caseId]/CaseDetailClient.tsx`
+- `src/lib/actions/tasks.ts`
+- `src/app/dashboard/tasks/page.tsx`, `TasksClient.tsx`, `TaskTable.tsx`, `TaskCalendarView.tsx`, `TaskDialog.tsx`
+
+---
+
+## [2026-05-08] — FEATURE: Financial Overview Page & Expenses Note
+
+**Description**: Added a centralized financial dashboard and improved UX in the expenses tab.
+- **Financial Overview Page**: Added a new route (`/dashboard/finances`) for owners, admins, and members with `can_manage_fees`.
+- **Role-based Filtering**: Lawyers without `can_manage_fees` can only see their assigned cases' financial data. Secretaries and Trainees are redirected.
+- **Server Action**: Implemented `getOfficeFinancialSummary` which queries cases, linked clients, fee agreements, and associated payments to calculate totals securely.
+- **Sidebar Integration**: Added "التقرير المالي" to the sidebar, fetching `can_manage_fees` locally to determine visibility.
+- **Expenses Note**: Added an explanatory info banner above the expenses table in `CaseFinancialTab.tsx`.
+
+**New Files**:
+- `src/app/dashboard/finances/page.tsx`
+- `src/app/dashboard/finances/FinancesClient.tsx`
+
+**Modified Files**:
+- `src/components/layout/Sidebar.tsx` — Added data fetching and routing logic.
+- `src/lib/actions/fees.ts` — Added nested-select query and role filtering.
+- `src/app/dashboard/cases/[caseId]/CaseFinancialTab.tsx` — Added expenses note.
+
+---
+
+## [2026-05-08] — FEATURE: Case Financial Tab (Fees, Payments, Expenses)
+
+**Description**: Full financial tracking module for legal cases. Allows offices to:
+- Define fee agreements per case (one per case, UNIQUE constraint)
+- Record payments against fee agreements (with payment method tracking)
+- Track case-related expenses separately
+- View real-time financial summary with progress bar
+
+**Database Changes** (Migration: `20260508_case_fees.sql`):
+- **New Tables**: `case_fees`, `case_payments`, `case_expenses` — all with `office_id` FK and full RLS policies
+- **New Column**: `office_members.can_manage_fees` (boolean, default false)
+- **New RPC**: `get_office_financial_summary(p_office_id)` — returns aggregate fees and payments
+- **RLS Policy Logic**: SELECT = all office members; INSERT/UPDATE = owner/admin or `can_manage_fees = true`; DELETE = owner/admin only
+
+**New Files**:
+- `src/lib/actions/fees.ts` — 6 server actions (getCaseFinancials, upsertCaseFeeAgreement, addPayment, deletePayment, addExpense, deleteExpense)
+- `src/app/dashboard/cases/[caseId]/CaseFinancialTab.tsx` — Client Component with summary card, payment list, expense list, and 4 dialogs
+
+**Modified Files**:
+- `src/types/database.ts` — Added `case_fees`, `case_payments`, `case_expenses` types + `can_manage_fees` to `office_members` + `get_office_financial_summary` RPC
+- `src/app/dashboard/cases/[caseId]/page.tsx` — Fetches `can_manage_fees` and passes to CaseDetailClient
+- `src/app/dashboard/cases/[caseId]/CaseDetailClient.tsx` — Enabled المصاريف tab, integrated CaseFinancialTab
+- `src/app/dashboard/team/[memberId]/MemberDetailClient.tsx` — Added financial permission toggle (can_manage_fees)
+- `src/lib/actions/team.ts` — Added `updateMemberCanManageFeesAction`
+- `src/app/dashboard/page.tsx` — Added 2 financial KPI cards (إجمالي الأتعاب + المحصّل), grid changed to xl:grid-cols-3
+
+**Permission Model**:
+- `canManage = owner || admin || can_manage_fees === true`
+- `canDelete = owner || admin`
+- Currency: `₪` (ILS) with `Intl.NumberFormat('ar-SA')`
+
+---
+
+## [2026-05-07] — CRITICAL FIX: Migrate File Upload from Server Action to Client-Side
+
+**Issue**: File uploads via Next.js Server Actions resulted in file corruption. Although the `Uint8Array` conversion was implemented, the `File` object data does not reliably cross the Next.js Server Action boundary without stringification or unexpected mutations depending on the environment, leading to invalid or missing data in the Supabase Storage.
+**Root Cause**: Server Actions shouldn't handle raw `File` or `FormData` for binary uploads to Supabase due to how Next.js serializes data. File objects passed through Server Actions lose their original binary integrity.
+**Fix Approach (Architecture Change)**:
+- Migrated the actual file upload logic completely to the Client Component (`AttachmentsSection.tsx`).
+- The Client Component now uses the `createClient` browser-side Supabase client (`@/lib/supabase/browser`) to upload the `File` directly to Supabase Storage.
+- Refactored the `attachments.ts` Server Actions: Removed `uploadCaseAttachment` and `uploadSessionAttachment` which used to handle both storage and DB insertion.
+- Created a new unified, lightweight Server Action: `saveAttachmentRecord`. This action only receives metadata strings (URL, size, type, path) and safely inserts the record into the database, preserving the RLS security context by resolving `current_office_id()` server-side.
+**Affected Files**:
+- `src/components/attachments/AttachmentsSection.tsx`
+- `src/lib/actions/attachments.ts`
+- `src/app/dashboard/cases/[caseId]/CaseDetailClient.tsx`
+- `src/app/dashboard/sessions/[sessionId]/SessionDetailClient.tsx`
+
+---
+
+## [2026-05-07] — UI Fix: Modal Attachment Placeholders Removal
+
+**Issue**: The "Add" buttons (placeholders for attachments) inside CaseDialog and SessionDialog were confusing users as they were disabled "soon" placeholders but appeared alongside active form inputs.
+**Fix**: 
+- Removed the entire attachments placeholder sections from both `CaseDialog.tsx` and `SessionDialog.tsx`.
+- Replaced them with an informational note guiding users to the detail pages (e.g. `📎 لرفع المرفقات والمستندات، توجّه إلى صفحة تفاصيل الجلسة`) where the actual `AttachmentsSection` component is now fully functional.
+**Affected Files**:
+- `src/app/dashboard/cases/CaseDialog.tsx`
+- `src/app/dashboard/sessions/SessionDialog.tsx`
+
+---
+
+## [2026-05-07] — Bug Fix: File Upload (PDF/Word) & Modal Buttons Review
+
+### 1. Fix File Corruption on Upload (Next.js Server Action Bug)
+**Issue**: PDF and Word files were getting corrupted and saved as exactly 290 bytes in Supabase Storage.
+**Root Cause**: In `attachments.ts`, using `Buffer.from(arrayBuffer)` within a Next.js Server Action behaves unexpectedly and strips the binary data, resulting in a string/metadata representation of 290 bytes being uploaded instead of the actual file.
+**Fix**: 
+- Validated the file object (`typeof file === 'string'`) to prevent raw string uploads.
+- Converted `file.arrayBuffer()` to a native `Uint8Array` (`new Uint8Array(arrayBuffer)`).
+- `Uint8Array` correctly preserves the raw binary representation and is fully supported by the Supabase Storage client.
+**Affected Files**:
+- `src/lib/actions/attachments.ts` (uploadCaseAttachment & uploadSessionAttachment)
+
+### 2. Modal "Add" Buttons Review
+**Issue**: Reports of "Add" buttons inside Edit Modals (Cases & Sessions) accidentally submitting forms due to missing `type="button"`.
+**Root Cause & Investigation**: 
+- Investigated `CaseDialog.tsx`, `SessionDialog.tsx`, and `TaskDialog.tsx`.
+- Discovered that the placeholder attachment buttons (`إرفاق مستند`, `إرفاق ملف`, etc.) **already had** `type="button"` and were correctly disabled.
+- Validated that the `AttachmentsSection` component (used in detail pages) had `<Button>` elements. Added explicit `type="button"` to all interactive trigger buttons inside `AttachmentsSection.tsx` to bulletproof them against accidental submission if they are ever nested inside forms in the future.
+- Verified there are no active missing `onClick` or `type="button"` attributes causing accidental submissions in the currently active UI.
+**Affected Files**:
+- `src/components/attachments/AttachmentsSection.tsx`
+
+---
+
 ## [2026-05-07] — Phase B: Case & Session Attachments
 
 **Severity:** Medium (new DB tables + RLS + server actions + UI)

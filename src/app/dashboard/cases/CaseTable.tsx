@@ -91,8 +91,8 @@ export function CaseTable({ initialCases, clients, teamMembers }: { initialCases
         </Button>
       </div>
 
-      {/* Table */}
-      <div className="border rounded-xl bg-white dark:bg-zinc-950 overflow-hidden shadow-sm">
+      {/* Desktop Table */}
+      <div className="hidden md:block border rounded-xl bg-white dark:bg-zinc-950 overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -151,6 +151,58 @@ export function CaseTable({ initialCases, clients, teamMembers }: { initialCases
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="md:hidden flex flex-col gap-4">
+        {filteredCases.length === 0 ? (
+          <div className="text-center p-8 text-muted-foreground bg-white rounded-xl border border-black/[0.08]">
+            لا يوجد قضايا مسجلة بناءً على تصفيتك
+          </div>
+        ) : (
+          filteredCases.map((c) => (
+            <div key={c.id} className="bg-white border border-black/[0.08] rounded-xl p-4 flex flex-col gap-3 relative shadow-sm">
+              <div className="flex justify-between items-start gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="font-bold text-[#0F1724] text-base line-clamp-1">{c.title}</span>
+                  {c.case_number && <span className="text-xs font-semibold text-[#9AA3B2] tracking-widest">{c.case_number}</span>}
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md bg-[#F4F5F7] text-[#1A2744]">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" dir="rtl">
+                    <DropdownMenuItem onClick={() => setEditingCase(c)}>
+                      <Pencil className="me-2 h-4 w-4" /> تعديل واطلاع
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDeletingId(c.id)} className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                      <Trash2 className="me-2 h-4 w-4" /> حذف القضية
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <div className="flex flex-col gap-1 text-[13px] text-[#5A6480]">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">الموكل:</span>
+                  <span>{c.clients?.name || '—'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">النوع:</span>
+                  <span>{c.case_type}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 mt-1">
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <Badge variant={getStatusColor(c.status) as any} className="font-normal rounded-md text-xs">{c.status}</Badge>
+                <Badge variant="outline" className={`font-normal rounded-md border-transparent text-xs ${getPriorityColor(c.priority)}`}>
+                  {c.priority}
+                </Badge>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       <CaseDialog 

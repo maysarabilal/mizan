@@ -16,6 +16,7 @@ import { STATUS_LABELS, PRIORITY_LABELS, AppStatus, AppPriority } from '@/lib/co
 
 type TaskRowExt = Database['public']['Tables']['tasks']['Row'] & {
   cases?: { title: string } | null
+  sessions?: { session_date: string; court: string | null } | null
   assigned_user?: { full_name: string } | null
 }
 type CaseRow = Database['public']['Tables']['cases']['Row']
@@ -29,10 +30,11 @@ const STORAGE_KEY = 'mizan_tasks_view'
 interface TasksClientProps {
   tasks: TaskRowExt[]
   cases: CaseRow[]
+  sessions: Database['public']['Tables']['sessions']['Row'][]
   teamMembers: TeamMember[]
 }
 
-export function TasksClient({ tasks, cases, teamMembers }: TasksClientProps) {
+export function TasksClient({ tasks, cases, sessions, teamMembers }: TasksClientProps) {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
   const [addDialogOpen, setAddDialogOpen] = useState(false)
 
@@ -204,7 +206,9 @@ export function TasksClient({ tasks, cases, teamMembers }: TasksClientProps) {
                 onValueChange={(val) => setStatusFilter((!val || val === '__clear__') ? '' : val)}
               >
                 <SelectTrigger className="w-full h-10 bg-white dark:bg-zinc-950 border-black/8 dark:border-zinc-700 rounded-md text-sm">
-                  <SelectValue placeholder="الحالة" />
+                  <SelectValue>
+                    {statusFilter ? STATUS_LABELS[statusFilter as AppStatus] : "الحالة"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {statusFilter && <SelectItem value="__clear__">← الكل</SelectItem>}
@@ -222,7 +226,9 @@ export function TasksClient({ tasks, cases, teamMembers }: TasksClientProps) {
                 onValueChange={(val) => setPriorityFilter((!val || val === '__clear__') ? '' : val)}
               >
                 <SelectTrigger className="w-full h-10 bg-white dark:bg-zinc-950 border-black/8 dark:border-zinc-700 rounded-md text-sm">
-                  <SelectValue placeholder="الأولوية" />
+                  <SelectValue>
+                    {priorityFilter ? PRIORITY_LABELS[priorityFilter as AppPriority] : "الأولوية"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {priorityFilter && <SelectItem value="__clear__">← الكل</SelectItem>}
@@ -267,9 +273,9 @@ export function TasksClient({ tasks, cases, teamMembers }: TasksClientProps) {
 
       {/* View Content */}
       {viewMode === 'list' ? (
-        <TaskTable tasks={filteredTasks} cases={cases} teamMembers={teamMembers} />
+        <TaskTable tasks={filteredTasks} cases={cases} sessions={sessions} teamMembers={teamMembers} />
       ) : (
-        <TaskCalendarView tasks={filteredTasks} cases={cases} teamMembers={teamMembers} />
+        <TaskCalendarView tasks={filteredTasks} cases={cases} sessions={sessions} teamMembers={teamMembers} />
       )}
 
       {/* Add Task Dialog */}
@@ -277,6 +283,7 @@ export function TasksClient({ tasks, cases, teamMembers }: TasksClientProps) {
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
         cases={cases}
+        sessions={sessions}
         teamMembers={teamMembers}
       />
     </>

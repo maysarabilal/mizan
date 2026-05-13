@@ -35,13 +35,16 @@ export function Topbar() {
   const [searchQuery, setSearchQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
+  const [unreadCount, setUnreadCount] = useState<number>(0)
   const [isPending, startTransition] = useTransition()
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const router = useRouter()
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    let channelRef: ReturnType<ReturnType<typeof createClient>['channel']> | null = null
+
+    const init = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
@@ -54,8 +57,43 @@ export function Topbar() {
 
       if (profile?.full_name) setUserName(profile.full_name)
       if (profile?.avatar_url) setAvatarUrl(profile.avatar_url)
+
+      // Fetch initial unread count
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false)
+
+      if (count !== null) setUnreadCount(count)
+
+      // Subscribe — re-fetch count on any change for this user
+      channelRef = supabase
+        .channel('notifications-topbar')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+          async () => {
+            const { count: newCount } = await supabase
+              .from('notifications')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('is_read', false)
+            if (newCount !== null) setUnreadCount(newCount)
+          }
+        )
+        .subscribe()
     }
-    fetchUserData()
+
+    init()
+
+    // Cleanup: runs when component unmounts — channelRef is captured in closure
+    return () => {
+      if (channelRef) {
+        const supabase = createClient()
+        supabase.removeChannel(channelRef)
+      }
+    }
   }, [])
 
   // Debounced search
@@ -119,7 +157,7 @@ export function Topbar() {
   }, {})
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 md:px-6 bg-white dark:bg-zinc-950">
+    <header className="hidden md:flex h-16 shrink-0 items-center justify-between border-b px-4 md:px-6 bg-white dark:bg-zinc-950">
       
       {/* Right side (RTL Start): Mobile Menu, Avatar, Notifications, Help */}
       <div className="flex items-center gap-4 md:gap-6">
@@ -170,7 +208,11 @@ export function Topbar() {
           <Link href="/dashboard/notifications">
             <button className="relative text-slate-500 hover:text-[#1a2744] transition-colors p-2">
               <Bell className="h-5 w-5 shrink-0" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-600 border border-white"></span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-600 border border-white text-[9px] text-white font-bold">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
               <span className="sr-only">الإشعارات</span>
             </button>
           </Link>
