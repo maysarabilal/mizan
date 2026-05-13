@@ -22,6 +22,7 @@ const cormorantGaramond = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   title: {
     default: "ميزان | نظام إدارة مكاتب المحاماة",
     template: "%s | ميزان",
@@ -29,8 +30,11 @@ export const metadata: Metadata = {
   description: "ميزان — أول نظام سحابي عربي لإدارة مكاتب المحاماة. نظّم القضايا والجلسات والمهام والأتعاب من مكان واحد. مصمم خصيصاً للمحامين في الوطن العربي.",
   keywords: ["إدارة مكاتب محاماة", "نظام محاماة", "برنامج محاماة", "ميزان", "قضايا", "جلسات محاكم", "SaaS", "law firm management"],
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/logo.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
     apple: "/logo.png",
   },
   openGraph: {
